@@ -1,0 +1,49 @@
+services:
+  server:
+    build:
+      context: ..
+      dockerfile: docker/server/Dockerfile
+    ports:
+      - "2279:2279"
+    volumes:
+      - server-data:/data
+    environment:
+      - DATABASE_PATH=/data/capybara-chat.db
+      - PORT=2279
+      - BRIDGE_API_KEY=${BRIDGE_API_KEY:-capybara-chat-bridge-key}
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:2279/health" ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  bridge:
+    build:
+      context: ..
+      dockerfile: docker/bridge/Dockerfile
+    ports:
+      - "2280:2280"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - SERVER_URL=http://server:2279
+      - BRIDGE_PORT=2280
+      - BRIDGE_API_KEY=${BRIDGE_API_KEY:-capybara-chat-bridge-key}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - USE_DOCKER=false
+    depends_on:
+      server:
+        condition: service_healthy
+
+  ui:
+    build:
+      context: ..
+      dockerfile: docker/ui/Dockerfile
+    ports:
+      - "3000:3000"
+    depends_on:
+      server:
+        condition: service_healthy
+
+volumes:
+  server-data:

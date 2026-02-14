@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 180" width="200" height="180">
+  <defs>
+    <linearGradient id="capyGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#d4a574"/>
+      <stop offset="100%" style="stop-color:#c4956a"/>
+    </linearGradient>
+  </defs>
+  
+  <!-- Water/Pond -->
+  <ellipse cx="100" cy="140" rx="85" ry="30" fill="#5eb3c4"/>
+  
+  <!-- Lily pads -->
+  <ellipse cx="45" cy="135" rx="20" ry="10" fill="#7ab892"/>
+  <ellipse cx="140" cy="150" rx="18" ry="8" fill="#6aaa82"/>
+  <ellipse cx="165" cy="130" rx="15" ry="7" fill="#7ab892"/>
+  
+  <!-- Capybara body (submerged part hint) -->
+  <ellipse cx="100" cy="130" rx="40" ry="20" fill="#b8875c" opacity="0.6"/>
+  
+  <!-- Capybara head -->
+  <ellipse cx="95" cy="85" rx="42" ry="38" fill="url(#capyGrad)"/>
+  
+  <!-- Snout -->
+  <ellipse cx="125" cy="100" rx="22" ry="18" fill="#d4a574"/>
+  
+  <!-- Nose -->
+  <ellipse cx="140" cy="95" rx="6" ry="4" fill="#6b5344"/>
+  
+  <!-- Content smile -->
+  <path d="M125 108 Q 135 115 145 108" stroke="#8b6b4a" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+  
+  <!-- Closed eyes (content expression) -->
+  <path d="M85 75 Q 95 70 105 75" stroke="#6b5344" stroke-width="3" fill="none" stroke-linecap="round"/>
+  
+  <!-- Ear -->
+  <ellipse cx="60" cy="55" rx="12" ry="10" fill="#c4956a"/>
+  <ellipse cx="60" cy="55" rx="7" ry="5" fill="#a67c52"/>
+</svg>

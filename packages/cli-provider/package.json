@@ -1,0 +1,21 @@
+{
+  "name": "@capybara-chat/cli-provider",
+  "version": "1.0.0",
+  "description": "CLI Provider for Capybara Chat",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc"
+  },
+  "dependencies": {
+    "@capybara-chat/types": "workspace:*",
+    "@capybara-chat/agent-sdk": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.3",
+    "@types/node": "^20.11.0"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}
