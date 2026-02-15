@@ -5,3 +5,13 @@ dist
 coverage
 .turbo
 .vercel
+
+# Build Artifacts
+*.tsbuildinfo
+dist/
+build/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
