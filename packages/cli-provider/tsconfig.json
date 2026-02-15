@@ -1,12 +1,10 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
+    "baseUrl": "../..",
     "outDir": "dist",
-    "paths": {
-      "@capybara-chat/types": [
-        "../../packages/types/dist"
-      ]
-    }
+    "rootDir": "src",
+    "paths": {}
   },
   "include": [
     "src/**/*"

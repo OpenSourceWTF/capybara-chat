@@ -14,7 +14,6 @@
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true,
-    "composite": true,
     "paths": {
       "@capybara-chat/types": [
         "./packages/types/src"
@@ -23,7 +22,7 @@
         "./packages/agent-sdk/src"
       ],
       "@capybara-chat/cli-provider": [
-        "./packages/cli-provider/src"
+        "./packages/cli-provider/src/index.ts"
       ],
       "@capybara-chat/chat-core": [
         "./packages/chat-core/src"

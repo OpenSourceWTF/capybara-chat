@@ -12,27 +12,20 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
-    "resolveJsonModule": true,
-    "jsx": "react-jsx",
+    "allowImportingTsExtensions": true,
+    "isolatedModules": true,
+    "moduleDetection": "force",
     "noEmit": true,
+    "jsx": "react-jsx",
+    "baseUrl": ".",
     "paths": {
-      "@capybara-chat/types": [
-        "../types/src"
-      ],
-      "@capybara-chat/chat-core": [
-        "../chat-core/src"
+      "@/*": [
+        "./src/*"
       ]
     }
   },
   "include": [
-    "src"
-  ],
-  "references": [
-    {
-      "path": "../types"
-    },
-    {
-      "path": "../chat-core"
-    }
+    "src",
+    "vite.config.ts"
   ]
 }

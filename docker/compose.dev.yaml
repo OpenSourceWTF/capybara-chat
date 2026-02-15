@@ -1,31 +1,62 @@
-# Development overrides — mounts source code for hot-reload
 services:
   server:
     build:
-      target: base
-    command: [ "pnpm", "--filter", "@capybara-chat/server", "dev" ]
+      context: ../
+      dockerfile: docker/server/Dockerfile
+      target: development
+    ports:
+      - "2279:2279"
     volumes:
-      - ..:/app
-      - /app/node_modules
-      - server-data:/data
+      - ../:/app
+      - /app/node_modules # Persist container node_modules if host doesn't have them, or to avoid platform mismatch? 
+      # Actually, better to use host node_modules on Linux for speed, but cleaner to use container's.
+      # If we mount ../:/app, we obscure container node_modules.
+      # If we add anonymous volume /app/node_modules, it preserves container's node_modules.
+      # But then adding a dependency on host won't reflect in container until rebuild.
+      # On Linux, host node_modules work fine usually. I'll omit the anonymous volume to allow host modules to shine through.
+    environment:
+      - NODE_ENV=development
+      - DATABASE_PATH=/data/capybara-chat.db
+      - PORT=2279
+    command: pnpm --filter @capybara-chat/server dev
+    restart: unless-stopped
 
   bridge:
     build:
-      target: base
-    command: [ "pnpm", "--filter", "@capybara-chat/bridge", "dev" ]
+      context: ../
+      dockerfile: docker/bridge/Dockerfile
+      target: development
+    ports:
+      - "2280:2280"
     volumes:
-      - ..:/app
-      - /app/node_modules
+      - ../:/app
       - /var/run/docker.sock:/var/run/docker.sock
+
+      - type: bind
+        source: ${HOME}/.claude/credentials
+        target: /tmp/claude_credentials
+        read_only: true
+    environment:
+      - NODE_ENV=development
+      - SERVER_URL=http://server:2279
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+    depends_on:
+      - server
+    command: pnpm --filter @capybara-chat/bridge dev
+    restart: unless-stopped
 
   ui:
     build:
-      context: ..
+      context: ../
       dockerfile: docker/ui/Dockerfile
-      target: base
-    command: [ "pnpm", "--filter", "@capybara-chat/ui", "dev" ]
-    volumes:
-      - ..:/app
-      - /app/node_modules
+      target: development
     ports:
-      - "3000:5173"
+      - "3000:3000"
+    volumes:
+      - ../:/app
+    environment:
+      - VITE_SERVER_URL=http://localhost:2279
+    depends_on:
+      - server
+    command: pnpm --filter @capybara-chat/ui dev --port 3000
+    restart: unless-stopped

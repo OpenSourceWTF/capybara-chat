@@ -14,13 +14,15 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@capybara-chat/types": "workspace:*",
     "@capybara-chat/agent-sdk": "workspace:*",
     "@capybara-chat/cli-provider": "workspace:*",
+    "@capybara-chat/types": "workspace:*",
+    "dockerode": "^3.3.5",
     "express": "^4.18.0",
     "socket.io-client": "^4.8.0"
   },
   "devDependencies": {
+    "@types/dockerode": "^4.0.1",
     "@types/express": "^4.17.0",
     "typescript": "^5.7.0",
     "vitest": "3.1.4"

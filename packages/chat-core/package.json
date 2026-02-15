@@ -20,14 +20,11 @@
   },
   "dependencies": {
     "@capybara-chat/types": "workspace:*",
-    "socket.io-client": "^4.8.0"
-  },
-  "peerDependencies": {
-    "react": "^18.0.0 || ^19.0.0"
+    "react": "^18.3.0",
+    "socket.io-client": "^4.8.3"
   },
   "devDependencies": {
-    "@types/react": "^19.0.0",
-    "react": "^19.0.0",
+    "@types/react": "^18.3.0",
     "typescript": "^5.7.0",
     "vitest": "3.1.4"
   }

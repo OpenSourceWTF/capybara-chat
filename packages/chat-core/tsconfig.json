@@ -1,7 +1,18 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
+    "baseUrl": "../..",
     "outDir": "./dist",
+    "paths": {},
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "allowImportingTsExtensions": true,
+    "noEmit": false,
+    "emitDeclarationOnly": true,
+    "composite": true,
+    "declaration": true,
+    "declarationMap": true,
+    "strict": true,
     "rootDir": "./src",
     "jsx": "react-jsx",
     "lib": [
@@ -12,10 +23,5 @@
   },
   "include": [
     "src"
-  ],
-  "references": [
-    {
-      "path": "../types"
-    }
   ]
 }

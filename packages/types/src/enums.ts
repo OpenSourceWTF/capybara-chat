@@ -120,6 +120,12 @@ export const Priority = {
 } as const;
 export type Priority = (typeof Priority)[keyof typeof Priority];
 
+export const ProviderType = {
+  CLI: 'cli',
+  SDK: 'sdk',
+} as const;
+export type ProviderType = (typeof ProviderType)[keyof typeof ProviderType];
+
 export const AttachmentType = {
   FILE: 'file',
   DIFF: 'diff',
@@ -541,6 +547,8 @@ export const SECRET_NAMES = {
   ANTHROPIC_API_KEY: 'ANTHROPIC_API_KEY',
 } as const;
 export type SecretName = (typeof SECRET_NAMES)[keyof typeof SECRET_NAMES];
+
+
 
 // ===== Model Registry =====
 

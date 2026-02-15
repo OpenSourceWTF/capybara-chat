@@ -43,10 +43,59 @@ import {
   ProcessStatus,
   AgentModel,
   SEGMENT_COLORS,
+  SessionMode,
+  FormEntityType,
+  EntityStatus,
+  PromptOutputType,
+  DeliverableType,
+  AgentDefinitionRole,
+  DocumentType,
+  AssistantType,
+  AssistantPhase,
+  GitHubPRState,
+  PRChecksStatus,
+  PRReviewDecision,
+  TaskResolution,
+  DocumentCreatedBy,
+  TaskStatus,
   SOCKET_EVENTS,
   PAGINATION,
+  SpecStatus,
+  WorkerTaskState,
+  PRMergeableState,
   SECRET_NAMES,
 } from './enums.js';
+
+export const SOCKET_DEFAULTS = {
+  RECONNECTION_ATTEMPTS: 5,
+  RECONNECTION_DELAY: 1000,
+  RECONNECTION: true,
+} as const;
+
+export const API_PATHS = {
+  SESSIONS: '/api/sessions',
+  SPECS: '/api/specs',
+  PROMPTS: '/api/prompts',
+  PIPELINES: '/api/pipelines',
+  DOCUMENTS: '/api/documents',
+  AGENTS: '/api/agents',
+  WORKSPACES: '/api/workspaces',
+  AUTH_GITHUB: '/api/auth/github',
+  GITHUB_INSTALLATIONS: '/api/github/installations',
+  SETTINGS: '/api/settings',
+  SETTINGS_GITHUB: '/api/settings/github',
+  ASSISTANTS: '/api/assistants',
+  TECHNIQUES: '/api/techniques',
+  TASKS: '/api/tasks',
+  AGENT_DEFINITIONS: '/api/agent-definitions',
+  FLOWS: '/api/flows',
+} as const;
+
+export const sessionPath = (sessionId: string, subPath?: string) =>
+  `${API_PATHS.SESSIONS}/${sessionId}${subPath ? `/${subPath}` : ''}`;
+
+export const entityPath = (basePath: string, id: string, subPath?: string) =>
+  `${basePath}/${id}${subPath ? `/${subPath}` : ''}`;
 
 
 /**
@@ -299,6 +348,216 @@ export function generateRefreshToken(): string {
 // ===== Core Primitives =====
 
 /**
+ * Spec - The primary tracking unit (story-sized work)
+ */
+export interface Spec {
+  id: string;
+  title: string;
+  content: string;              // Markdown specification
+  workflowStatus: SpecStatus;   // Workflow state: READY, IN_PROGRESS, etc.
+  priority: Priority;
+  tags: string[];
+  workspaceId?: string;           // Which repo this spec is for
+  agentConfigId?: string;         // Agent config template (EC2-like)
+  parentId?: string;              // For sub-specs
+  promptPipelineId?: string;      // Optional linked pipeline
+  issueNumber?: number;           // GitHub issue number if linked
+  issueUrl?: string;              // GitHub issue URL if linked
+  githubPrNumber?: number;        // GitHub PR number if linked
+  githubPrUrl?: string;           // GitHub PR URL if linked
+  status: EntityStatus;           // Draft/published status
+  sessionId?: string;             // Originating chat session
+  createdBy: string | null;       // User ID who created this entity
+  author?: Author;                // Display details for createdBy
+  createdAt: number;
+  updatedAt: number;
+}
+
+/**
+ * Technique - Workflow definition for task execution
+ * 
+ * Defines phases, prompts, and verification for autonomous execution.
+ * 'ralph' and 'raw' are system techniques seeded on startup.
+ */
+export interface Technique {
+  id: string;
+  name: string;
+  slug: string;                     // Unique identifier (e.g., 'ralph', 'raw')
+  description?: string;
+  version: string;
+  variablesSchema: Record<string, unknown>;  // JSON Schema for form generation
+  phases: TechniquePhase[];
+  verification: TechniqueVerification;
+  isSystem: boolean;                // true for built-in techniques
+  createdAt: number;
+  updatedAt: number;
+}
+
+/**
+ * TechniquePhase - A phase within a technique execution
+ */
+export interface TechniquePhase {
+  id: string;
+  name: string;
+  prompt: string;                   // Handlebars template name or content
+  loop: boolean;                    // Whether to loop until exit condition
+  maxIterations: number;            // Maximum iterations if loop=true
+  exitCondition: string;            // Promise marker to check (e.g., 'PLANNED', 'COMPLETE')
+}
+
+/**
+ * TechniqueVerification - Verification commands for technique execution
+ */
+export interface TechniqueVerification {
+  commands: string[];               // Commands to run (e.g., 'pnpm build', 'pnpm test')
+  allMustPass: boolean;             // All commands must pass
+}
+
+/**
+ * WorkerTask - Persisted task in the worker queue
+ * 
+ * Represents a spec implementation task executed by a worker.
+ * Survives server restarts and supports resume.
+ */
+export interface WorkerTask {
+  id: string;
+  name?: string;                        // Human-readable task name
+  specId: string;
+  workspaceId: string;
+  techniqueId: string;
+  agentDefinitionId?: string;         // Agent definition for context/model config
+  /** Model override for agent executing this task (sonnet/opus/haiku/inherit) */
+  modelOverride?: AgentModel;
+  /** Subagent-specific model overrides, keyed by subagent name */
+  subagentModelOverrides?: Record<string, AgentModel>;
+  variables: Record<string, unknown>;  // Form values from variablesSchema
+  state: WorkerTaskState;
+  currentPhaseId?: string;
+  iteration: number;
+  artifactPath?: string;              // .huddle/ralph/<slug>/ path
+  worktreePath?: string;              // Git worktree directory
+  branchName?: string;                // Git branch for this task
+  headCommit?: string;                // Short git commit hash (7 chars) of branch HEAD
+  implementationPlan?: string;        // Final IMPLEMENTATION_PLAN.md content
+  prNumber?: number;                  // GitHub PR number if created
+  prUrl?: string;                     // GitHub PR URL
+  error?: string;                     // Error message if failed
+  attempt: number;
+  maxAttempts: number;
+  queuedAt: number;
+  startedAt?: number;
+  completedAt?: number;
+
+  // Activity-based progress tracking (053-task-ui-streaming)
+  sessionId?: string;                 // Link to associated session for streaming
+  sessionTotalCost?: number;          // Denormalized from session.totalCost for display
+  lastProgressMessage?: string;       // "Running pytest" - what Claude is doing
+  lastMessage?: string;               // Last Claude response (133-task-card-enhancements) - fallback when no progress msg
+  position?: number;                  // Manual ordering within state column (134-kanban-reorder)
+  currentPhase?: string;              // "analyzing" | "implementing" | "testing" | "finalizing"
+  lastProgressAt?: number;            // Last progress update timestamp (for stuck detection)
+  executorId?: string;                // Which executor claimed this task
+
+  // PR Resolution State (055-task-pr-resolution)
+  prState?: GitHubPRState;                    // Track PR lifecycle: 'open' | 'closed' | 'merged'
+  prMergeable?: boolean;                       // Can PR be merged?
+  prMergeableState?: PRMergeableState;         // 'clean' | 'dirty' | 'blocked' | 'behind' | 'unknown'
+  prChecksStatus?: PRChecksStatus;             // 'pending' | 'success' | 'failure' | 'neutral' | 'none'
+  prReviewDecision?: PRReviewDecision;         // 'approved' | 'changes_requested' | 'review_required' | 'none'
+  prLastSyncedAt?: number;                     // Last time we fetched PR data from GitHub
+  prChangedFiles?: number;                     // Number of files changed in PR
+  prAdditions?: number;                        // Lines added
+  prDeletions?: number;                        // Lines deleted
+
+  // Resolution Tracking (055-task-pr-resolution)
+  resolution?: TaskResolution;                 // How task was closed
+  resolvedAt?: number;                         // When task was resolved
+  resolvedBy?: string;                         // Who merged/closed the PR
+
+  createdBy: string | null;                    // User ID who submitted this task
+}
+
+/**
+ * Task - A step within a spec (child of Spec)
+ */
+export interface Task {
+  id: string;
+  specId: string;
+  title: string;
+  description?: string;
+  status: TaskStatus;
+  order: number;                // Ordering within spec
+  createdAt: number;
+  completedAt?: number;
+  /** Model override for the agent executing this task (sonnet/opus/haiku/inherit) */
+  modelOverride?: AgentModel;
+  /** Subagent-specific model overrides, keyed by subagent name */
+  subagentModelOverrides?: Record<string, AgentModel>;
+}
+
+/**
+ * PromptSegment - Composable prompt building block with template variables
+ */
+export interface PromptSegment {
+  id: string;
+  name: string;
+  content: string;              // Template with {{variables}}
+  summary: string;              // AI-generated description for library
+  tags: string[];               // For library organization
+  variables: string[];          // Auto-extracted from content
+  color: SegmentColor;          // Visual color for pipeline rendering
+  status: EntityStatus;         // Draft/published status
+  sessionId?: string;           // Originating chat session
+  outputType?: PromptOutputType; // What type of output this prompt generates
+  createdBy: string | null;     // User ID who created this segment
+  author?: Author;              // Display details for createdBy
+  createdAt: number;
+  updatedAt: number;
+}
+
+/**
+ * PipelineStep - A segment in a pipeline with optional variable overrides
+ */
+export interface PipelineStep {
+  segmentId: string;
+  order: number;
+  overrides?: Record<string, string>;  // Override variables for this step
+}
+
+/**
+ * PromptPipeline - Ordered segments with variable bindings
+ *
+ * For assistants, set deliverableType to specify the expected output schema.
+ * The pipeline renderer will append the appropriate schema instructions.
+ */
+export interface PromptPipeline {
+  id: string;
+  name: string;
+  description?: string;
+
+  // Pipeline composition
+  steps: PipelineStep[];            // Ordered segments with overrides
+
+  // Variable definitions (shell-like DSL: "name=value & other=val")
+  variables: string;
+
+  // Claude SDK options - reference segments by ID
+  systemPromptSegmentId?: string;   // Segment to use as system prompt
+  prefill?: string;                 // Assistant prefill text
+
+  // Assistant mode: specifies expected structured output
+  deliverableType: DeliverableType;
+
+  // Chat integration fields
+  status: EntityStatus;             // Draft/published status
+  sessionId?: string;               // Originating chat session
+
+  createdBy: string | null;         // User ID who created this pipeline
+  createdAt: number;
+  updatedAt: number;
+}
+
+/**
  * ContextUsage - Token usage tracking for a session
  *
  * Used for auto-compaction decisions and displaying usage in UI.
@@ -307,6 +566,80 @@ export interface ContextUsage {
   used: number;
   total: number;
   percent: number;
+}
+
+/**
+ * HumanInputRequest - Request for human input during task execution
+ */
+export interface HumanInputRequest {
+  id: string;
+  taskId: string;
+  sessionId?: string;
+  question: string;
+  context?: string;
+  options?: string[];
+  timeout: number;
+  createdAt: number;
+  respondedAt?: number;
+  response?: string;
+  respondedBy?: string;
+  status: 'pending' | 'responded' | 'timeout' | 'cancelled';
+}
+
+/**
+ * Document - A markdown document in the document library
+ */
+export interface Document {
+  id: string;
+  name: string;
+  content: string;
+  type: DocumentType;
+  tags: string[];
+  sessionId?: string;
+  status: EntityStatus;
+  createdBy: string | null;
+  author?: Author;
+  createdAt: number;
+  updatedAt: number;
+  deletedAt?: number;
+}
+
+/**
+ * DocumentVersion - A version of a document's content
+ */
+export interface DocumentVersion {
+  id: string;
+  documentId: string;
+  content: string;
+  createdAt: number;
+  createdBy: DocumentCreatedBy;
+}
+
+/**
+ * AgentConfig - Template for agent capabilities
+ */
+export interface AgentConfig {
+  id: string;
+  name: string;
+  description?: string;
+  skills: string[];
+  mcpServers: Array<{
+    name: string;
+    config?: Record<string, unknown>;
+  }>;
+  env?: Record<string, string>;
+  resources?: {
+    memoryMB?: number;
+    cpuCores?: number;
+    timeoutMinutes?: number;
+  };
+  claudeConfig?: {
+    model?: string;
+    systemPrompt?: string;
+    maxTokens?: number;
+  };
+  createdAt: number;
+  updatedAt: number;
 }
 
 /**
@@ -343,6 +676,11 @@ export interface Session {
 
   createdBy: string | null;             // User ID who started this session
   author?: Author;                      // Display details for createdBy
+  // Entity-editing mode (for MCP Forms)
+  mode?: SessionMode;                   // Session mode (default: 'chat')
+  editingEntityType?: FormEntityType;   // Type of entity being edited
+  editingEntityId?: string;             // ID of entity being edited
+  formContextInjected?: boolean;        // Whether form schema was injected into agent context
   startedAt: number;
   lastActivityAt: number;
   endedAt?: number;
@@ -410,6 +748,7 @@ export interface Workspace {
   defaultBranch: string;          // e.g. "main"
   localPath: string;              // Path to checked-out repo
   worktreesPath: string;          // Path to worktrees directory
+  installationId?: number;        // GitHub App installation ID for auth
   cloneStatus?: CloneStatus;      // Status of git clone operation
   cloneError?: string;            // Error message if clone failed
   createdAt: number;
@@ -448,6 +787,107 @@ export interface Event {
   timestamp: number;
 }
 
+// ============================================================================
+// AGENT DEFINITIONS - Configurable agent templates
+// ============================================================================
+
+/**
+ * Prefilled conversation message
+ */
+export interface PrefilledMessage {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+/**
+ * Subagent link - reference to another AgentDefinition
+ */
+export interface SubagentLink {
+  agentDefinitionId: string;
+  alias?: string;
+  descriptionOverride?: string;
+  model?: AgentModel;
+}
+
+/**
+ * Agent Definition - Configurable agent template
+ */
+export interface AgentDefinition {
+  id: string;
+  name: string;
+  slug: string;
+  description: string;
+  systemPromptSegmentId?: string | null;  // FK to prompt_segments for editable prompts
+  role: AgentDefinitionRole;             // Determines where this agent appears in pickers
+  prefilledConversation?: PrefilledMessage[];
+  skills?: string[];  // Skill slugs to enable (inherited by subagents)
+  tags: string[];
+  status: EntityStatus;           // Draft/published status
+  sessionId?: string;
+  isSystem?: boolean;
+  isDefault?: boolean;  // True for the default chat assistant
+  createdBy: string | null;       // User ID who created this definition
+  author?: Author;                // Display details for createdBy
+  createdAt: number;
+  updatedAt: number;
+  /** Agent configuration - systemPrompt, allowedTools, mcpServers, model, subagents */
+  agentContext: AgentContext;
+}
+
+/**
+ * Form data for AgentDefinition editor (UI)
+ */
+export interface AgentDefinitionFormData {
+  name: string;
+  slug: string;
+  description: string;
+  systemPromptSegmentId: string | null;
+  role: AgentDefinitionRole;
+  prefilledConversation: PrefilledMessage[];
+  skills: string;  // Comma-separated skill slugs (matches tags pattern)
+  tags: string;  // Comma-separated string (matches existing pattern)
+  /** Agent configuration - systemPrompt, allowedTools, mcpServers, model, subagents */
+  agentContext: AgentContext;
+}
+
+/**
+ * Resolved agent with expanded subagents
+ */
+export interface ResolvedAgentDefinition extends Omit<AgentDefinition, 'subagents'> {
+  subagents: ResolvedSubagent[];
+}
+
+export interface ResolvedSubagent {
+  name: string;
+  description: string;
+  definition: AgentDefinition;
+}
+
+/**
+ * Generate unique ID for agent definitions
+ */
+export function generateAgentDefinitionId(): string {
+  return `agdef_${crypto.randomUUID().slice(0, 8)}`;
+}
+
+/**
+ * Task - A step within a spec (child of Spec)
+ */
+export interface Task {
+  id: string;
+  specId: string;
+  title: string;
+  description?: string;
+  status: TaskStatus;
+  order: number;                // Ordering within spec
+  createdAt: number;
+  completedAt?: number;
+  /** Model override for the agent executing this task (sonnet/opus/haiku/inherit) */
+  modelOverride?: AgentModel;
+  /** Subagent-specific model overrides, keyed by subagent name */
+  subagentModelOverrides?: Record<string, AgentModel>;
+}
+
 // ===== SDK Types =====
 
 /**
@@ -471,6 +911,8 @@ export interface AgentMCPServerConfig {
   args?: string[];
   env?: Record<string, string>;
   enabled?: boolean;
+  /** Whether to inject MCP tool documentation into system prompt (defaults to true) */
+  injectDocs?: boolean;
 }
 
 export interface AgentContext {
@@ -484,6 +926,7 @@ export interface AgentContext {
 
 export interface SessionConfig {
   sessionId: string;                            // REQUIRED - identity flows from server
+  specId?: string;
   initialPrompt?: string;                       // Initial prompt for agent
   workingDirectory?: string;
   environment?: Record<string, string>;
@@ -702,9 +1145,387 @@ export interface WorktreePushResponse {
   /** Whether push was successful */
   success: boolean;
   /** Error message if success=false */
-  error?: string;
-  /** 150: Short HEAD commit hash (7 chars) after push */
   headCommit?: string;
+}
+
+// SocketEvent type alias for backward compatibility
+export type SocketEvent = (typeof SOCKET_EVENTS)[keyof typeof SOCKET_EVENTS];
+
+/**
+ * Socket.io event payload types for type-safe event handling
+ */
+export interface SocketEventPayloads {
+  [SOCKET_EVENTS.BRIDGE_REGISTER]: { bridgeId: string };
+  [SOCKET_EVENTS.BRIDGE_HEARTBEAT]: { activeMessageIds: string[] };
+  [SOCKET_EVENTS.AGENT_STATUS]: { status: 'online' | 'offline' | 'connecting'; bridgeId?: string | null };
+  [SOCKET_EVENTS.SESSION_SEND]: {
+    sessionId: string;
+    messageId?: string;
+    content: string;
+    type?: string;
+    // Entity editing context - passed from UI to bridge
+    editingContext?: {
+      mode: typeof SessionMode.ENTITY_EDITING;
+      entityType: FormEntityType;
+      entityId?: string;  // Optional for new/unsaved entities
+      formContextInjected: boolean;
+    };
+  };
+  [SOCKET_EVENTS.SESSION_MESSAGE]: {
+    sessionId: string;
+    messageId?: string;
+    content?: string;
+    type?: string;
+    // Entity editing context - forwarded from UI through server to bridge
+    editingContext?: {
+      mode: typeof SessionMode.ENTITY_EDITING;
+      entityType: FormEntityType;
+      entityId?: string;  // Optional for new/unsaved entities
+      formContextInjected: boolean;
+    };
+  };
+  [SOCKET_EVENTS.SESSION_RESPONSE]: {
+    sessionId: string;
+    messageId?: string;
+    message: {
+      id: string;
+      content: string;
+      role: string;
+      streaming?: boolean;
+      createdAt: number;
+      toolUse?: { name: string; input: unknown; result?: string };
+    };
+  };
+  [SOCKET_EVENTS.SESSION_ERROR]: { sessionId: string; error: string };
+  [SOCKET_EVENTS.MESSAGE_STATUS]: { sessionId: string; messageId: string; status: MessageStatus };
+  [SOCKET_EVENTS.COMMAND_RESULT]: {
+    sessionId: string;
+    messageId?: string;
+    command: string;
+    result: string;
+    success: boolean;
+  };
+  [SOCKET_EVENTS.SESSION_CREATED]: Session;
+  [SOCKET_EVENTS.SESSION_HIDDEN]: { sessionId: string };
+  // 135-assistant-model-switch: Model switch event payload
+  [SOCKET_EVENTS.SESSION_MODEL_SWITCH]: {
+    sessionId: string;
+    model: AgentModel;
+  };
+  // 168-right-bar-elimination: Stop session generation
+  [SOCKET_EVENTS.SESSION_STOP]: {
+    sessionId: string;
+  };
+  [SOCKET_EVENTS.SESSION_UPDATED]: {
+    sessionId: string;
+    name?: string;
+    messageCount?: number;
+    lastMessagePreview?: string;
+    lastActivityAt?: number;
+    hasUnread?: boolean;
+  };
+  [SOCKET_EVENTS.SESSION_CLAUDE_ID]: {
+    sessionId: string;
+    claudeSessionId: string;
+  };
+  [SOCKET_EVENTS.SESSION_CONTEXT_RESET]: {
+    sessionId: string;
+    reason: string;
+    previousClaudeSessionId?: string;
+  };
+  [SOCKET_EVENTS.SESSION_THINKING]: {
+    sessionId: string;
+    content: string;
+    timestamp: number;
+  };
+  [SOCKET_EVENTS.SESSION_CONTEXT_INJECTED]: {
+    sessionId: string;
+    messageId?: string;  // User message that had context injected
+    entityType: FormEntityType;
+    entityId?: string;  // undefined for new entities
+    contextType: 'full' | 'minimal';  // Whether full context or minimal prefix was used
+    contextPreview?: string;  // Truncated preview of injected context for UI display
+  };
+  [SOCKET_EVENTS.SESSION_HUMAN_INPUT_REQUESTED]: SessionHumanInputData;
+  [SOCKET_EVENTS.SESSION_HUMAN_INPUT_RESPONSE]: {
+    sessionId: string;
+    response: string;
+  };
+  [SOCKET_EVENTS.SESSION_PROGRESS]: {
+    sessionId: string;
+    message: string;
+    phase?: 'analyzing' | 'implementing' | 'testing' | 'finalizing';
+    timestamp?: number;
+  };
+  [SOCKET_EVENTS.SESSION_BLOCKED]: {
+    sessionId: string;
+    reason: string;
+    blockedOn: string;
+    timestamp?: number;
+  };
+  [SOCKET_EVENTS.SESSION_HALTED]: {
+    sessionId: string;
+    reason: 'timeout' | 'cli_error' | 'process_exit' | 'cli_disconnected';
+    errorMessage: string;
+    canResume: boolean;
+    timestamp?: number;
+  };
+  [SOCKET_EVENTS.SESSION_ARTIFACT]: { sessionId: string; artifact: Artifact };
+  // 193-phase-4: Pipeline observability
+  [SOCKET_EVENTS.SESSION_LOG]: {
+    sessionId: string;
+    level: 'debug' | 'info' | 'warn' | 'error';
+    message: string;
+    context?: Record<string, unknown>;
+    timestamp: number;
+    source?: 'pipeline' | 'stage' | 'adapter';
+  };
+  // 199-2.1: Pipeline state persistence for crash recovery
+  [SOCKET_EVENTS.SESSION_PIPELINE_STATE]: {
+    sessionId: string;
+    pipelineStatus: SessionStatus;
+    pipelineMessageId?: string;
+    pipelineMessageContent?: string;
+    pipelineContextInjected?: boolean;
+    pipelineContextUsage?: ContextUsage;
+  };
+  [SOCKET_EVENTS.SESSION_ACTIVITY]: {
+    sessionId: string;
+    activity: {
+      type: 'tool_start' | 'tool_end' | 'thinking' | 'subagent' | 'subagent_timeout' | 'resuming' | 'starting';
+      toolName?: string;
+      subagentName?: string;
+      toolUseId?: string;  // For timeout tracking
+      elapsedMs?: number;  // For timeout reporting
+      status: 'running' | 'complete' | 'timeout' | 'error';
+    };
+  };
+  [SOCKET_EVENTS.SESSION_COST]: {
+    sessionId: string;
+    cost: number;
+    turnCost?: number;
+  };
+  [SOCKET_EVENTS.SESSION_TOOL_USE]: {
+    sessionId: string;
+    toolUseId: string;
+    toolName: string;
+    input: unknown;
+    output?: unknown;
+    error?: string;
+    parentToolUseId?: string | null;  // For subagent context tracking
+    elapsedMs?: number;
+    timestamp: number;
+    messageId?: string;  // Links tool to parent assistant message for embedding
+  };
+  // Context visibility events
+  [SOCKET_EVENTS.SESSION_CONTEXT_USAGE]: {
+    sessionId: string;
+    usage: ContextUsage;
+    timestamp: number;
+  };
+  [SOCKET_EVENTS.SESSION_COMPACTED]: {
+    sessionId: string;
+    beforeUsage: ContextUsage;
+    afterUsage?: ContextUsage;
+    timestamp: number;
+  };
+  [SOCKET_EVENTS.SYNC_FULL]: {
+    specs: any[]; // Placeholder if Spec not fully defined or circular
+    sessions: Session[];
+    agents: Agent[];
+    workspaces: Workspace[];
+    prompts: PromptSegment[];
+    agentStatus: 'online' | 'offline';
+    /** 193-session-reconnect-debug: Session IDs with messages currently being processed */
+    processingSessions: string[];
+  };
+  [SOCKET_EVENTS.EVENT]: import('./events.js').CapybaraEvent;
+
+  // Workspace status reporting
+  [SOCKET_EVENTS.WORKSPACE_STATUS_REPORT]: {
+    reports: WorkspaceStatusReport[];
+  };
+  [SOCKET_EVENTS.WORKSPACE_STATUS_UPDATED]: {
+    workspaceId: string;
+    cloneStatus: CloneStatus;
+    hasLocalChanges?: boolean;
+    ahead?: number;
+    behind?: number;
+    currentBranch?: string;
+    error?: string;
+  };
+
+  // Worker Task Event Payloads
+  [SOCKET_EVENTS.TASK_CREATED]: {
+    taskId: string;
+    specId: string;
+    workspaceId: string;
+    techniqueId: string;
+  };
+  [SOCKET_EVENTS.TASK_ASSIGNED]: {
+    taskId: string;
+    workerId?: string;
+  };
+  [SOCKET_EVENTS.TASK_PROGRESS]: {
+    taskId: string;
+    message: string;
+    phase?: string;
+    timestamp: number;
+  };
+  [SOCKET_EVENTS.TASK_PHASE_CHANGED]: {
+    taskId: string;
+    previousPhaseId?: string;
+    newPhaseId: string;
+  };
+  [SOCKET_EVENTS.TASK_COMPLETE]: {
+    taskId: string;
+    sessionId?: string;  // 196-session-status-sanity: Include sessionId to clear processingSessions
+    prNumber?: number;
+    prUrl?: string;
+  };
+  [SOCKET_EVENTS.TASK_FAILED]: {
+    taskId: string;
+    sessionId?: string;  // 196-session-status-sanity: Include sessionId to clear processingSessions
+    error: string;
+  };
+  [SOCKET_EVENTS.TASK_BLOCKED]: {
+    taskId: string;
+    reason: string;
+  };
+  [SOCKET_EVENTS.TASK_OUTPUT]: {
+    taskId: string;
+    sessionId?: string;
+    content: string;  // Streaming output text (delta or complete)
+    type: 'delta' | 'complete';
+    timestamp: number;
+  };
+  [SOCKET_EVENTS.TASK_CANCELLED]: {
+    taskId: string;
+    sessionId?: string;  // 196-session-status-sanity: Include sessionId to clear processingSessions
+    cancelledBy?: string;  // Who cancelled the task
+    reason?: string;
+  };
+  [SOCKET_EVENTS.TASK_CANCEL]: {
+    taskId: string;  // Server -> Bridge: request to cancel a running task
+  };
+  [SOCKET_EVENTS.TASK_COST_UPDATE]: {
+    taskId: string;
+    cost: number;
+    timestamp: number;
+  };
+
+  // Task PR Lifecycle Event Payloads (055-task-pr-resolution)
+  [SOCKET_EVENTS.TASK_PR_CREATED]: {
+    taskId: string;
+    prNumber: number;
+    prUrl: string;
+  };
+  [SOCKET_EVENTS.TASK_PR_SYNCED]: {
+    taskId: string;
+    prNumber: number;
+    prState: GitHubPRState;
+    prMergeable?: boolean;
+    prChecksStatus?: PRChecksStatus;
+    prReviewDecision?: PRReviewDecision;
+  };
+  [SOCKET_EVENTS.TASK_PR_MERGED]: {
+    taskId: string;
+    prNumber: number;
+    sha: string;
+    mergedBy?: string;
+  };
+  [SOCKET_EVENTS.TASK_PR_CLOSED]: {
+    taskId: string;
+    prNumber: number;
+    reason?: string;
+  };
+  [SOCKET_EVENTS.TASK_PR_CHECKS_UPDATED]: {
+    taskId: string;
+    prNumber: number;
+    previousStatus?: PRChecksStatus;
+    newStatus: PRChecksStatus;
+  };
+  [SOCKET_EVENTS.TASK_PR_REVIEW_UPDATED]: {
+    taskId: string;
+    prNumber: number;
+    previousDecision?: PRReviewDecision;
+    newDecision: PRReviewDecision;
+  };
+  [SOCKET_EVENTS.TASK_RESOLVED]: {
+    taskId: string;
+    resolution: TaskResolution;
+    resolvedAt: number;
+    resolvedBy?: string;
+  };
+
+  // Agent Definition Event Payloads
+  [SOCKET_EVENTS.AGENT_DEFINITION_CREATED]: { agentDefinition: AgentDefinition };
+  [SOCKET_EVENTS.AGENT_DEFINITION_UPDATED]: { agentDefinition: AgentDefinition };
+  [SOCKET_EVENTS.AGENT_DEFINITION_DELETED]: { id: string };
+
+  // Entity CRUD Event Payloads (used for UI refresh after huddle-mcp operations)
+  [SOCKET_EVENTS.SPEC_CREATED]: { spec: any }; // Placeholder
+  [SOCKET_EVENTS.SPEC_UPDATED]: { spec: any }; // Placeholder
+  [SOCKET_EVENTS.SPEC_DELETED]: { specId: string };
+  [SOCKET_EVENTS.DOCUMENT_CREATED]: { document: Document };
+  [SOCKET_EVENTS.DOCUMENT_UPDATED]: { document: Document };
+  [SOCKET_EVENTS.DOCUMENT_DELETED]: { documentId: string; soft?: boolean };
+  // Memory Events (124-agent-memory-system)
+  [SOCKET_EVENTS.MEMORY_CREATED]: { document: Document };
+  [SOCKET_EVENTS.MEMORY_DELETED]: { documentId: string };
+  [SOCKET_EVENTS.PROMPT_CREATED]: { segment: PromptSegment };
+  [SOCKET_EVENTS.PROMPT_UPDATED]: { segment: PromptSegment };
+  [SOCKET_EVENTS.PROMPT_DELETED]: { segmentId: string };
+
+  // Task Resume & Message Queue Event Payloads (090-task-resume)
+  [SOCKET_EVENTS.SESSION_MESSAGE_QUEUED]: {
+    sessionId: string;
+    messageId: string;
+    position: number;
+    queueSize: number;
+  };
+  [SOCKET_EVENTS.SESSION_MESSAGE_DEQUEUED]: {
+    sessionId: string;
+    messageId: string;
+    remaining: number;
+  };
+  [SOCKET_EVENTS.TASK_RESUMED]: {
+    taskId: string;
+    sessionId: string;
+    resumedFrom: 'complete' | 'failed';
+    triggeredBy: 'user_message' | 'retry';
+  };
+  [SOCKET_EVENTS.TASK_RESUME_FAILED]: {
+    taskId: string;
+    sessionId: string;
+    reason: 'session_expired' | 'task_locked' | 'unknown';
+    canRetry: boolean;
+  };
+
+  // Worktree Operations Event Payloads (092-worktree-design)
+  [SOCKET_EVENTS.WORKTREE_TOKEN_REQUEST]: WorktreeTokenRequest;
+  [SOCKET_EVENTS.WORKTREE_TOKEN_RESPONSE]: WorktreeTokenResponse;
+  [SOCKET_EVENTS.WORKTREE_OPERATION_RESULT]: WorktreeOperationResult;
+  // 150-task-ui-git-actions: Manual push from UI
+  [SOCKET_EVENTS.WORKTREE_PUSH_REQUEST]: WorktreePushRequest;
+  [SOCKET_EVENTS.WORKTREE_PUSH_RESPONSE]: WorktreePushResponse;
+
+  // Flow Events (208-event-driven-agentic-layer)
+  [SOCKET_EVENTS.FLOW_TRIGGERED]: {
+    flowId: string;
+    flowName: string;
+    taskId: string;
+    triggerEventType: string;
+  };
+  [SOCKET_EVENTS.FLOW_TRIGGER_FAILED]: {
+    flowId: string;
+    flowName: string;
+    triggerEventType: string;
+    error: string;
+  };
+  [SOCKET_EVENTS.FLOW_CREATED]: { flow: any }; // Placeholder
+  [SOCKET_EVENTS.FLOW_UPDATED]: { flow: any }; // Placeholder
+  [SOCKET_EVENTS.FLOW_DELETED]: { flowId: string };
 }
 
 // ===== Constants =====

@@ -1,53 +1,64 @@
-FROM node:22-slim AS base
-ENV PNPM_HOME="/pnpm"
-ENV PATH="$PNPM_HOME:$PATH"
-RUN corepack enable
+FROM node:22-slim AS development
 
-FROM base AS builder
-# Install build tools for native modules (better-sqlite3)
-RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
-  --mount=type=cache,target=/var/lib/apt,sharing=locked \
-  apt-get update && apt-get install -y python3 make g++
 WORKDIR /app
 
-# 1. Copy dependency manifests FIRST (Docker layer caching)
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json ./
+# Install build dependencies for native modules (better-sqlite3)
+RUN apt-get update && apt-get install -y python3 make g++ git curl && rm -rf /var/lib/apt/lists/*
+
+# Enable corepack for pnpm
+RUN corepack enable
+
+# Copy workspace configuration
+COPY package.json pnpm-workspace.yaml tsconfig.base.json .npmrc ./
+
+# Copy package manifests first for better caching
 COPY packages/types/package.json ./packages/types/
 COPY packages/server/package.json ./packages/server/
 
-# 2. Install dependencies (cached until package.json changes)
-RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
+# Install dependencies (frozen lockfile not strict because we are selectively copying)
+RUN pnpm install --no-frozen-lockfile
 
-# 3. Copy source code
-COPY packages/types/ ./packages/types/
-COPY packages/server/ ./packages/server/
+# Copy source code
+COPY packages/types ./packages/types
+COPY packages/server ./packages/server
 
-# 4. Build
-RUN pnpm --filter @capybara-chat/types build && \
-  pnpm --filter @capybara-chat/server build
+# Build packages
+RUN find packages/types/src -name "*.js" -o -name "*.d.ts" -type f -delete && \
+  pnpm -r build
 
-# ─── Production stage ────────────────────────────────────────────────────────
-FROM base AS runner
-RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
-  --mount=type=cache,target=/var/lib/apt,sharing=locked \
-  apt-get update && apt-get install -y git curl python3 make g++
+# --- Builder Stage (Pruned) ---
+FROM development as builder
+
+# Deploy server to /prod/server (creates isolated production build)
+RUN pnpm --filter @capybara-chat/server deploy --prod /prod/server
+
+# Copy missing dist artifacts (because they are ignored by pack/deploy)
+# Ensure destination directories exist
+RUN rm -rf /prod/server/node_modules/@capybara-chat/types/dist \
+  && mkdir -p /prod/server/node_modules/@capybara-chat/types/dist \
+  && cp -r /app/packages/types/dist/* /prod/server/node_modules/@capybara-chat/types/dist/
+RUN rm -rf /prod/server/dist \
+  && mkdir -p /prod/server/dist \
+  && cp -r /app/packages/server/dist/* /prod/server/dist/ \
+  && cp /app/packages/server/src/db/schema.sql /prod/server/dist/db/schema.sql
+
+# --- Production Stage ---
+FROM node:22-slim
+
 WORKDIR /app
 
-COPY --from=builder /app/package.json /app/pnpm-lock.yaml /app/pnpm-workspace.yaml ./
-COPY --from=builder /app/packages/types/package.json ./packages/types/
-COPY --from=builder /app/packages/server/package.json ./packages/server/
+# improve sqlite3 compatibility
+RUN apt-get update && apt-get install -y python3 && rm -rf /var/lib/apt/lists/*
 
-# Install production dependencies only (with native rebuild)
-RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile --prod
+# Copy deployed server
+COPY --from=builder /prod/server .
+# Also copy node_modules inside packages if they exist (hoisting usually prevents this but safe to check)
+# In pnpm workspaces, deps are usually hoisted.
 
-COPY --from=builder /app/packages/types/dist/ ./packages/types/dist/
-COPY --from=builder /app/packages/server/dist/ ./packages/server/dist/
-
-# Create data directory for SQLite
-RUN mkdir -p /data
-
-ENV NODE_ENV=production
-ENV DATABASE_PATH=/data/capybara-chat.db
 EXPOSE 2279
 
-CMD ["node", "packages/server/dist/server.js"]
+ENV NODE_ENV=production
+# Default database path (can be overridden)
+ENV DATABASE_PATH=/data/capybara-chat.db
+
+CMD ["node", "dist/index.js"]

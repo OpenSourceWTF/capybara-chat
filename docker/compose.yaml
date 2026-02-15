@@ -1,49 +1,49 @@
 services:
   server:
     build:
-      context: ..
+      context: ../
       dockerfile: docker/server/Dockerfile
     ports:
       - "2279:2279"
     volumes:
-      - server-data:/data
+      - ./data:/data
     environment:
+      - NODE_ENV=production
       - DATABASE_PATH=/data/capybara-chat.db
       - PORT=2279
-      - BRIDGE_API_KEY=${BRIDGE_API_KEY:-capybara-chat-bridge-key}
-    healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:2279/health" ]
-      interval: 10s
-      timeout: 5s
-      retries: 3
+      - CAPYBARA_API_KEY=dev-key
+    restart: always
 
   bridge:
     build:
-      context: ..
+      context: ../
       dockerfile: docker/bridge/Dockerfile
     ports:
       - "2280:2280"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
+
+      - type: bind
+        source: ${HOME}/.claude/credentials
+        target: /tmp/claude_credentials
+        read_only: true
     environment:
-      - SERVER_URL=http://server:2279
-      - BRIDGE_PORT=2280
-      - BRIDGE_API_KEY=${BRIDGE_API_KEY:-capybara-chat-bridge-key}
+      - NODE_ENV=production
+      - CAPYBARA_SERVER_URL=http://server:2279
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
-      - USE_DOCKER=false
+      - CAPYBARA_API_KEY=dev-key
     depends_on:
-      server:
-        condition: service_healthy
+      - server
+    restart: unless-stopped
 
   ui:
     build:
-      context: ..
+      context: ../
       dockerfile: docker/ui/Dockerfile
     ports:
       - "3000:3000"
+    environment:
+      - VITE_SERVER_URL=http://localhost:2279 # Browser access via localhost
     depends_on:
-      server:
-        condition: service_healthy
-
-volumes:
-  server-data:
+      - server
+    restart: always

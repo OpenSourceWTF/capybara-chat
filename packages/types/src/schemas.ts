@@ -23,6 +23,20 @@ import {
   AgentModel,
   OrderDir,
   Theme,
+  SpecStatus,
+  TaskStatus,
+  WorkerTaskState,
+  GitHubIssueState,
+  GitHubPRState,
+  PRMergeableState,
+  PRChecksStatus,
+  PRReviewDecision,
+  TaskResolution,
+  PromptOutputType,
+  DeliverableType,
+  DocumentType,
+  DocumentCreatedBy,
+  FormEntityType,
 } from './enums.js';
 
 // ===== Helper to create Zod enum from const object =====
@@ -49,6 +63,20 @@ export const SessionModeSchema = zEnumFromObj(SessionMode);
 export const SessionHistoryEventTypeSchema = zEnumFromObj(SessionHistoryEventType);
 export const AgentModelSchema = zEnumFromObj(AgentModel);
 
+export const SpecStatusSchema = zEnumFromObj(SpecStatus);
+export const TaskStatusSchema = zEnumFromObj(TaskStatus);
+export const WorkerTaskStateSchema = zEnumFromObj(WorkerTaskState);
+export const GitHubIssueStateSchema = zEnumFromObj(GitHubIssueState);
+export const GitHubPRStateSchema = zEnumFromObj(GitHubPRState);
+export const PRMergeableStateSchema = zEnumFromObj(PRMergeableState);
+export const PRChecksStatusSchema = zEnumFromObj(PRChecksStatus);
+export const PRReviewDecisionSchema = zEnumFromObj(PRReviewDecision);
+export const TaskResolutionSchema = zEnumFromObj(TaskResolution);
+export const PromptOutputTypeSchema = zEnumFromObj(PromptOutputType);
+export const DeliverableTypeSchema = zEnumFromObj(DeliverableType);
+export const DocumentTypeSchema = zEnumFromObj(DocumentType);
+export const DocumentCreatedBySchema = zEnumFromObj(DocumentCreatedBy);
+
 // ===== Helper Schemas =====
 
 export const MCPServerConfigSchema = z.object({
@@ -67,6 +95,287 @@ export const ClaudeConfigSchema = z.object({
   systemPrompt: z.string().optional(),
   maxTokens: z.number().int().positive().optional(),
 });
+
+/**
+ * AgentMCPServerConfig - Full MCP server config for agent definitions
+ * (Different from MCPServerConfigSchema which is a simpler format for AgentConfig)
+ */
+export const AgentMCPServerConfigSchema = z.object({
+  name: z.string().min(1),
+  command: z.string().min(1),
+  args: z.array(z.string()).optional(),
+  env: z.record(z.string(), z.string()).optional(),
+  enabled: z.boolean(),
+  /** Whether to inject MCP tool documentation into system prompt (defaults to true) */
+  injectDocs: z.boolean().optional(),
+});
+
+/**
+ * SubagentLink - Link to a sub-agent with optional description override.
+ * If descriptionOverride is empty/missing, the auto-composition system
+ * uses the subagent's own `description` field from its agent definition.
+ */
+export const SubagentLinkSchema = z.object({
+  agentDefinitionId: z.string().min(1),
+  alias: z.string().optional(),
+  descriptionOverride: z.string().optional(),
+});
+
+// ===== Core Entity Schemas (Spec/Task) =====
+
+/**
+ * Spec schema - Story-sized work unit
+ */
+export const SpecSchema = z.object({
+  id: z.string(),
+  title: z.string().min(1).max(500),
+  content: z.string().max(500_000),
+  workflowStatus: SpecStatusSchema,
+  priority: PrioritySchema,
+  tags: z.array(z.string()),
+  workspaceId: z.string().optional(),
+  agentConfigId: z.string().optional(),
+  parentId: z.string().optional(),
+  promptPipelineId: z.string().optional(),
+  issueNumber: z.number().int().positive().optional(),
+  issueUrl: z.string().url().optional(),
+  githubPrNumber: z.number().int().positive().optional(),
+  githubPrUrl: z.string().url().optional(),
+  status: EntityStatusSchema,
+  sessionId: z.string().optional(),
+  createdAt: z.number(),
+  updatedAt: z.number(),
+});
+
+export const CreateSpecSchema = SpecSchema.omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).partial({
+  workflowStatus: true,
+  priority: true,
+  tags: true,
+  status: true,
+}).extend({
+  workflowStatus: SpecStatusSchema.optional().default('READY'),
+  status: EntityStatusSchema.optional().default('draft'),
+});
+
+export const UpdateSpecSchema = SpecSchema.partial().omit({
+  id: true,
+  createdAt: true,
+}).extend({
+  // Allow null to clear the workspace association
+  workspaceId: z.string().nullable().optional(),
+});
+
+/**
+ * Task schema - Step within a spec
+ */
+export const TaskSchema = z.object({
+  id: z.string(),
+  specId: z.string(),
+  title: z.string().min(1).max(500),
+  description: z.string().max(10_000).optional(),
+  status: TaskStatusSchema,
+  order: z.number().int().min(0),
+  createdAt: z.number(),
+  completedAt: z.number().optional(),
+  /** Model override for agent executing this task */
+  modelOverride: AgentModelSchema.optional(),
+  /** Subagent-specific model overrides, keyed by subagent name */
+  subagentModelOverrides: z.record(z.string(), AgentModelSchema).optional(),
+});
+
+export const CreateTaskSchema = TaskSchema.omit({
+  id: true,
+  createdAt: true,
+  completedAt: true,
+}).partial({
+  status: true,
+  order: true,
+});
+
+export const UpdateTaskSchema = TaskSchema.partial().omit({
+  id: true,
+  specId: true,
+  createdAt: true,
+});
+
+/**
+ * PromptSegment schema - Prompt template
+ */
+export const PromptSegmentSchema = z.object({
+  id: z.string(),
+  name: z.string().min(1).max(200),
+  content: z.string().max(100_000),
+  summary: z.string().max(1000),
+  tags: z.array(z.string()),
+  variables: z.array(z.string()),
+  color: z.string(),
+  status: EntityStatusSchema,
+  sessionId: z.string().optional(),
+  outputType: PromptOutputTypeSchema.optional(),
+  createdAt: z.number(),
+  updatedAt: z.number(),
+});
+
+export const CreatePromptSegmentSchema = PromptSegmentSchema.omit({
+  id: true,
+  variables: true, // Auto-extracted
+  createdAt: true,
+  updatedAt: true,
+}).partial({
+  summary: true,
+  tags: true,
+  color: true,
+  status: true,
+}).extend({
+  status: EntityStatusSchema.optional().default('draft'),
+});
+
+export const UpdatePromptSegmentSchema = PromptSegmentSchema.partial().omit({
+  id: true,
+  createdAt: true,
+});
+
+/**
+ * PipelineStep schema
+ */
+export const PipelineStepSchema = z.object({
+  segmentId: z.string(),
+  order: z.number().int().min(0),
+  overrides: z.record(z.string(), z.string()).optional(),
+});
+
+/**
+ * PromptPipeline schema - Workflow of prompts
+ */
+export const PromptPipelineSchema = z.object({
+  id: z.string(),
+  name: z.string().min(1).max(200),
+  description: z.string().max(2000).optional(),
+  steps: z.array(PipelineStepSchema),
+  variables: z.string(),
+  systemPromptSegmentId: z.string().optional(),
+  prefill: z.string().optional(),
+  deliverableType: DeliverableTypeSchema,
+  status: EntityStatusSchema,
+  sessionId: z.string().optional(),
+  createdAt: z.number(),
+  updatedAt: z.number(),
+});
+
+export const CreatePromptPipelineSchema = PromptPipelineSchema.omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).partial({
+  steps: true,
+  variables: true,
+  deliverableType: true,
+  status: true,
+});
+
+export const UpdatePromptPipelineSchema = PromptPipelineSchema.partial().omit({
+  id: true,
+  createdAt: true,
+});
+
+/**
+ * AgentConfig schema - Agent capability template
+ */
+export const AgentConfigSchema = z.object({
+  id: z.string(),
+  name: z.string().min(1).max(200),
+  description: z.string().max(2000).optional(),
+  skills: z.array(z.string()),
+  mcpServers: z.array(MCPServerConfigSchema),
+  env: z.record(z.string(), z.string()).optional(),
+  resources: ResourceLimitsSchema.optional(),
+  claudeConfig: ClaudeConfigSchema.optional(),
+  createdAt: z.number(),
+  updatedAt: z.number(),
+});
+
+export const CreateAgentConfigSchema = AgentConfigSchema.omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).partial({
+  skills: true,
+  mcpServers: true,
+});
+
+export const UpdateAgentConfigSchema = AgentConfigSchema.partial().omit({
+  id: true,
+  createdAt: true,
+});
+
+/**
+ * AgentContext Schema - Centralized agent configuration
+ */
+export const AgentContextSchema = z.object({
+  systemPrompt: z.string().optional(),
+  allowedTools: z.array(z.string()).optional(),
+  mcpServers: z.array(AgentMCPServerConfigSchema).optional(),
+  model: AgentModelSchema.optional(),
+  subagents: z.record(z.string(), z.object({
+    description: z.string(),
+    prompt: z.string(),
+    tools: z.array(z.string()).optional(),
+    model: AgentModelSchema.optional(),
+  })).optional(),
+});
+
+/**
+ * AgentDefinition Schema
+ */
+export const AgentDefinitionRoleSchema = z.enum(['assistant', 'subagent', 'task_agent']);
+
+export const AgentDefinitionSchema = z.object({
+  id: z.string(),
+  name: z.string().min(1).max(100),
+  slug: z.string().min(1).max(50).regex(/^[a-z0-9-]+$/),
+  description: z.string().min(1).max(1000),
+  systemPromptSegmentId: z.string().nullable().optional(),
+  role: AgentDefinitionRoleSchema.default('subagent'),
+  prefilledConversation: z.array(z.object({
+    role: MessageRoleSchema,
+    content: z.string().min(1),
+  })).optional(),
+  skills: z.array(z.string()).optional(),
+  tags: z.array(z.string()).optional(),
+  sessionId: z.string().optional(),
+  status: EntityStatusSchema,
+  isDefault: z.boolean().optional(),
+  createdAt: z.number(),
+  updatedAt: z.number(),
+  agentContext: AgentContextSchema,
+});
+
+export const CreateAgentDefinitionSchema = AgentDefinitionSchema.omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).partial({
+  agentContext: true,
+}).extend({
+  role: AgentDefinitionRoleSchema.optional().default('subagent'),
+  status: EntityStatusSchema.optional().default('draft'),
+  agentContext: AgentContextSchema.optional().default({}),
+}).refine(
+  (data) => (data.agentContext?.systemPrompt && data.agentContext.systemPrompt.length > 0) || data.systemPromptSegmentId,
+  { message: 'Either agentContext.systemPrompt or systemPromptSegmentId is required' }
+);
+
+export const UpdateAgentDefinitionSchema = AgentDefinitionSchema.partial().omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+
 
 // ===== User & Auth Schemas =====
 
@@ -164,6 +473,47 @@ export const CreateAgentSchema = AgentSchema.omit({
 export const UpdateAgentSchema = AgentSchema.partial().omit({
   id: true,
   createdAt: true,
+});
+
+export const DocumentSchema = z.object({
+  id: z.string(),
+  name: z.string().min(1).max(500),
+  content: z.string().max(500_000),
+  type: DocumentTypeSchema,
+  tags: z.array(z.string()),
+  sessionId: z.string().optional(),
+  status: EntityStatusSchema,
+  createdBy: z.string().nullable(),
+  createdAt: z.number(),
+  updatedAt: z.number(),
+  deletedAt: z.number().optional(),
+});
+
+export const CreateDocumentSchema = DocumentSchema.omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  deletedAt: true,
+}).partial({
+  tags: true,
+  status: true,
+  type: true,
+}).extend({
+  type: DocumentTypeSchema.optional().default('document'),
+  status: EntityStatusSchema.optional().default('draft'),
+});
+
+export const UpdateDocumentSchema = DocumentSchema.partial().omit({
+  id: true,
+  createdAt: true,
+});
+
+export const DocumentVersionSchema = z.object({
+  id: z.string(),
+  documentId: z.string(),
+  content: z.string().max(500_000),
+  createdAt: z.number(),
+  createdBy: DocumentCreatedBySchema,
 });
 
 /**
@@ -327,3 +677,92 @@ export const GetMessagesQuerySchema = z.object({
 });
 
 export type GetMessagesQuery = z.infer<typeof GetMessagesQuerySchema>;
+
+// ===== Generic API Schemas =====
+
+export const DiffQuerySchema = z.object({
+  workspaceId: z.string(),
+  path: z.string(),
+});
+
+export const SyncWorkspaceSchema = z.object({
+  workspaceId: z.string(),
+});
+
+export const BranchStatsResponseSchema = z.object({
+  ahead: z.number(),
+  behind: z.number(),
+  name: z.string(),
+  commit: z.string(),
+});
+
+export const DeleteWorkspaceSchema = z.object({
+  workspaceId: z.string(),
+});
+
+export const CreatePRSchema = z.object({
+  workspaceId: z.string(),
+  title: z.string().min(1),
+  body: z.string().optional(),
+  head: z.string().min(1),
+  base: z.string().optional(),
+});
+
+export const MergePRSchema = z.object({
+  workspaceId: z.string(),
+  prNumber: z.number().int().positive(),
+  method: z.enum(['merge', 'squash', 'rebase']).optional(),
+});
+
+export const GitHubPRDetailsSchema = z.object({
+  number: z.number(),
+  title: z.string(),
+  url: z.string(),
+  state: GitHubPRStateSchema,
+  body: z.string(),
+  author: z.object({
+    login: z.string(),
+    avatarUrl: z.string(),
+  }),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+
+// ===== Type Exports for New Schemas =====
+
+export type SpecSchemaType = z.infer<typeof SpecSchema>;
+export type CreateSpecInput = z.infer<typeof CreateSpecSchema>;
+export type UpdateSpecInput = z.infer<typeof UpdateSpecSchema>;
+
+export type TaskSchemaType = z.infer<typeof TaskSchema>;
+export type CreateTaskInput = z.infer<typeof CreateTaskSchema>;
+export type UpdateTaskInput = z.infer<typeof UpdateTaskSchema>;
+
+export type AgentConfigSchemaType = z.infer<typeof AgentConfigSchema>;
+export type CreateAgentConfigInput = z.infer<typeof CreateAgentConfigSchema>;
+export type UpdateAgentConfigInput = z.infer<typeof UpdateAgentConfigSchema>;
+
+export type AgentDefinitionSchemaType = z.infer<typeof AgentDefinitionSchema>;
+export type CreateAgentDefinitionInput = z.infer<typeof CreateAgentDefinitionSchema>;
+export type UpdateAgentDefinitionInput = z.infer<typeof UpdateAgentDefinitionSchema>;
+
+export type PromptSegmentSchemaType = z.infer<typeof PromptSegmentSchema>;
+export type CreatePromptSegmentInput = z.infer<typeof CreatePromptSegmentSchema>;
+export type UpdatePromptSegmentInput = z.infer<typeof UpdatePromptSegmentSchema>;
+
+export type PromptPipelineSchemaType = z.infer<typeof PromptPipelineSchema>;
+export type CreatePromptPipelineInput = z.infer<typeof CreatePromptPipelineSchema>;
+export type UpdatePromptPipelineInput = z.infer<typeof UpdatePromptPipelineSchema>;
+
+export type SubagentLink = z.infer<typeof SubagentLinkSchema>;
+export type AgentMCPServerConfig = z.infer<typeof AgentMCPServerConfigSchema>;
+export type ResourceLimits = z.infer<typeof ResourceLimitsSchema>;
+export type ClaudeConfig = z.infer<typeof ClaudeConfigSchema>;
+
+export type DiffQueryInput = z.infer<typeof DiffQuerySchema>;
+export type SyncWorkspaceInput = z.infer<typeof SyncWorkspaceSchema>;
+export type DeleteWorkspaceInput = z.infer<typeof DeleteWorkspaceSchema>;
+export type CreatePRInput = z.infer<typeof CreatePRSchema>;
+export type MergePRInput = z.infer<typeof MergePRSchema>;
+export type BranchStats = z.infer<typeof BranchStatsResponseSchema>;
+export type GitHubPRDetails = z.infer<typeof GitHubPRDetailsSchema>;
