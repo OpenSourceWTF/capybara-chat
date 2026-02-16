@@ -30,7 +30,7 @@ describe('socket-registry', () => {
   let mockDeps: SocketHandlerDeps;
 
   beforeEach(() => {
-    // 199-Task-1.3: Create mock sessionContextStore with chained return for getOrCreate
+    // Create mock sessionContextStore with chained return for getOrCreate
     const mockSessionContext = { modelOverride: undefined };
     const mockSessionContextStore = {
       delete: vi.fn(),
@@ -39,21 +39,17 @@ describe('socket-registry', () => {
     };
 
     mockStateManagers = {
-      taskMessageQueue: { clear: vi.fn() },
       concurrency: { clearSession: vi.fn() },
       agentConfigManager: {},
       sessionContextStore: mockSessionContextStore,
     } as unknown as BridgeStateManagers;
 
     mockServices = {
-      spawner: {},
       humanLoop: {
         provideInput: vi.fn().mockReturnValue(true),
         cancelRequest: vi.fn(),
       },
       assistantPool: null,
-      taskResumeHandler: null,
-      sessionInitService: null,
       messageHandler: {
         handleMessage: vi.fn().mockResolvedValue(undefined),
       },
@@ -63,8 +59,6 @@ describe('socket-registry', () => {
     mockConfig = {
       serverUrl: 'http://localhost:2279',
       bridgePort: 2280,
-      useDocker: false,
-      enableTaskExecutor: false,
     } as BridgeConfig;
 
     mockDeps = {
@@ -106,7 +100,6 @@ describe('socket-registry', () => {
       expect(mockStateManagers.sessionContextStore.delete).toHaveBeenCalledWith('session-to-clean');
       expect(mockStateManagers.concurrency.clearSession).toHaveBeenCalledWith('session-to-clean');
       expect(mockServices.humanLoop.cancelRequest).toHaveBeenCalledWith('session-to-clean');
-      expect(mockStateManagers.taskMessageQueue.clear).toHaveBeenCalledWith('session-to-clean');
     });
   });
 
@@ -116,14 +109,12 @@ describe('socket-registry', () => {
 
       await handler({
         sessionId: 'session-1',
-        message: 'Hello',
-        isHuman: true,
+        content: 'Hello',
       } as any);
 
       expect(mockServices.messageHandler!.handleMessage).toHaveBeenCalledWith({
         sessionId: 'session-1',
-        message: 'Hello',
-        isHuman: true,
+        content: 'Hello',
       });
     });
 
@@ -133,8 +124,7 @@ describe('socket-registry', () => {
       // Should not throw
       await handler({
         sessionId: 'session-1',
-        message: 'Hello',
-        isHuman: true,
+        content: 'Hello',
       } as any);
     });
   });

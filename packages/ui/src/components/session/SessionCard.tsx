@@ -66,12 +66,11 @@ export const SessionCard = React.memo(
       statusColor = "text-primary font-bold";
     }
 
-    // Session Type Indicator: [AGENT] or [TASK] for long-running sessions
+    // Session Type Indicator: [AGENT] for agent sessions
     // Assistant sessions (assistant:*, undefined) show no type indicator
     const isAgentSession = session.sessionType === 'agent';
-    const isTaskSession = session.sessionType === 'task';
-    const showTypeIndicator = isAgentSession || isTaskSession;
-    const typeTag = isAgentSession ? 'AGENT' : 'TASK';
+    const showTypeIndicator = isAgentSession;
+    const typeTag = 'AGENT';
 
     const handleStartRename = (e: React.MouseEvent) => {
       e.stopPropagation();

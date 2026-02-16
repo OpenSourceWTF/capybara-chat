@@ -315,7 +315,7 @@ interface CLISession {
   lineReader: LineReader;
   backend: CLIBackend;
   agentContext?: AgentContext;
-  worktreePath?: string;
+  workingDirectory?: string;
   stderrBuffer: string[];
   startedAt: number;
   lastActivityAt: number;
@@ -414,13 +414,12 @@ export class GenericCLIProvider implements AgentProvider {
   }
 
   async createSession(sessionConfig: SessionConfig): Promise<SessionHandle> {
-    const { sessionId, worktreePath, agentContext, taskId } = sessionConfig;
+    const { sessionId, agentContext, workingDirectory } = sessionConfig;
     log.info('Creating session', {
       sessionId,
       backend: this.config.backend,
-      worktreePath: worktreePath ?? '(none)',
+      workingDirectory: workingDirectory ?? '(none)',
       hasAgentContext: !!agentContext,
-      taskId: taskId ?? '(none)',
     });
 
     const stderrBuffer: string[] = [];
@@ -429,9 +428,8 @@ export class GenericCLIProvider implements AgentProvider {
     if (this.backendConfig.buildArgs) {
       const cliConfig: CLISessionConfig = {
         sessionId,
-        worktreePath: worktreePath || this.config.cwd,
+        workingDirectory: workingDirectory || this.config.cwd,
         agentContext: agentContext || { model: this.config.model },
-        taskId,
       };
       args = this.backendConfig.buildArgs(cliConfig, [...this.backendConfig.args]);
     } else {
@@ -439,8 +437,8 @@ export class GenericCLIProvider implements AgentProvider {
       if (this.config.model) {
         args.push('--model', this.config.model);
       }
-      if (worktreePath || this.config.cwd) {
-        args.push('--cwd', worktreePath || this.config.cwd!);
+      if (workingDirectory || this.config.cwd) {
+        args.push('--cwd', workingDirectory || this.config.cwd!);
       }
     }
 
@@ -449,7 +447,7 @@ export class GenericCLIProvider implements AgentProvider {
       ...this.config.env,
     };
     if (this.backendConfig.buildEnv) {
-      const cliConfig: CLISessionConfig = { sessionId, worktreePath, agentContext, taskId };
+      const cliConfig: CLISessionConfig = { sessionId, workingDirectory, agentContext };
       env = this.backendConfig.buildEnv(cliConfig, env);
     }
 
@@ -457,11 +455,11 @@ export class GenericCLIProvider implements AgentProvider {
       sessionId,
       command: this.backendConfig.command,
       argCount: args.length,
-      cwd: worktreePath || this.config.cwd,
+      cwd: workingDirectory || this.config.cwd,
     });
 
     const childProcess = spawn(this.backendConfig.command, args, {
-      cwd: worktreePath || this.config.cwd,
+      cwd: workingDirectory || this.config.cwd,
       env,
       stdio: ['pipe', 'pipe', 'pipe'],
     });
@@ -501,7 +499,7 @@ export class GenericCLIProvider implements AgentProvider {
       lineReader,
       backend: this.config.backend,
       agentContext,
-      worktreePath,
+      workingDirectory,
       stderrBuffer,
       startedAt: now(),
       lastActivityAt: now(),
@@ -536,10 +534,10 @@ export class GenericCLIProvider implements AgentProvider {
   async resumeSession(
     sessionId: string,
     claudeSessionId: string,
-    worktreePath?: string,
+    workingDirectory?: string,
     agentContext?: AgentContext,
   ): Promise<SessionHandle> {
-    log.info('Resuming session', { sessionId, claudeSessionId, worktreePath: worktreePath ?? '(none)' });
+    log.info('Resuming session', { sessionId, claudeSessionId, workingDirectory: workingDirectory ?? '(none)' });
 
     const existing = this.sessions.get(sessionId);
     if (existing) {
@@ -563,7 +561,7 @@ export class GenericCLIProvider implements AgentProvider {
     if (this.backendConfig.buildArgs) {
       const cliConfig: CLISessionConfig = {
         sessionId,
-        worktreePath: worktreePath || this.config.cwd,
+        workingDirectory: workingDirectory || this.config.cwd,
         agentContext: agentContext || { model: this.config.model },
         claudeSessionIdToResume: claudeSessionId,
       };
@@ -573,8 +571,8 @@ export class GenericCLIProvider implements AgentProvider {
       if (this.config.model) {
         args.push('--model', this.config.model);
       }
-      if (worktreePath || this.config.cwd) {
-        args.push('--cwd', worktreePath || this.config.cwd!);
+      if (workingDirectory || this.config.cwd) {
+        args.push('--cwd', workingDirectory || this.config.cwd!);
       }
     }
 
@@ -583,7 +581,7 @@ export class GenericCLIProvider implements AgentProvider {
       ...this.config.env,
     };
     if (this.backendConfig.buildEnv) {
-      const cliConfig: CLISessionConfig = { sessionId, worktreePath, agentContext, claudeSessionIdToResume: claudeSessionId };
+      const cliConfig: CLISessionConfig = { sessionId, workingDirectory, agentContext, claudeSessionIdToResume: claudeSessionId };
       env = this.backendConfig.buildEnv(cliConfig, env);
     }
 
@@ -591,11 +589,11 @@ export class GenericCLIProvider implements AgentProvider {
       sessionId,
       claudeSessionId,
       command: this.backendConfig.command,
-      cwd: worktreePath || this.config.cwd,
+      cwd: workingDirectory || this.config.cwd,
     });
 
     const childProcess = spawn(this.backendConfig.command, args, {
-      cwd: worktreePath || this.config.cwd,
+      cwd: workingDirectory || this.config.cwd,
       env,
       stdio: ['pipe', 'pipe', 'pipe'],
     });
@@ -627,7 +625,7 @@ export class GenericCLIProvider implements AgentProvider {
       lineReader,
       backend: this.config.backend,
       agentContext,
-      worktreePath,
+      workingDirectory,
       stderrBuffer,
       startedAt: now(),
       lastActivityAt: now(),
@@ -653,7 +651,7 @@ export class GenericCLIProvider implements AgentProvider {
     };
   }
 
-  async forkSession(sessionId: string, newSessionId: string, worktreePath?: string): Promise<SessionHandle> {
+  async forkSession(sessionId: string, newSessionId: string, workingDirectory?: string): Promise<SessionHandle> {
     throw new Error('Fork session not implemented for CLI provider yet');
   }
 

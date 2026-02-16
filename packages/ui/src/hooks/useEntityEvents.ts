@@ -67,7 +67,7 @@ export function useEntityEvents(options: UseEntityEventsOptions): void {
  * const { emitNew, emitEdit, emitClose, emitNewSession } = useEntityEventEmitters();
  *
  * // In a button click handler
- * emitNew('spec');
+ * emitNew('prompt');
  * emitNewSession();
  * ```
  */

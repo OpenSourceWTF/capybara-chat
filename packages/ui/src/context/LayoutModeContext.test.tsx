@@ -19,7 +19,7 @@ describe('LayoutModeContext', () => {
         <button onClick={() => enterFocus({ entityType: 'prompt', entityId: '123' })}>Enter Focus</button>
         <button onClick={() => enterFocus({ entityType: 'prompt' }, { tab: 'prompts', selectedEntity: null })}>Enter Focus With State</button>
         <button onClick={() => exitFocus()}>Exit Focus</button>
-        <button onClick={() => enterImmersive({ entityType: 'pipeline' })}>Enter Immersive</button>
+        <button onClick={() => enterImmersive({ entityType: 'document' })}>Enter Immersive</button>
         <button onClick={() => exitImmersive()}>Exit Immersive</button>
       </div>
     );
@@ -105,7 +105,7 @@ describe('LayoutModeContext', () => {
     });
 
     expect(screen.getByTestId('mode')).toHaveTextContent('immersive');
-    expect(screen.getByTestId('focus-context')).toHaveTextContent('pipeline');
+    expect(screen.getByTestId('focus-context')).toHaveTextContent('document');
   });
 
   it('should exit immersive mode', async () => {

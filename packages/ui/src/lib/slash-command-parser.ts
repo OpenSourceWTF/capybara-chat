@@ -4,9 +4,9 @@
  * Parses user input for slash commands that trigger entity creation/editing.
  * Supports commands like:
  * - /new prompt
- * - /edit spec:spec-123
+ * - /edit document:doc-123
  * - /create document
- * - /open pipeline:pipe-abc
+ * - /open agentDefinition:agent-abc
  */
 
 // Import FormEntityType from @capybara-chat/types (canonical source)
@@ -18,7 +18,7 @@ export { FormEntityType };
 /**
  * Supported command actions
  */
-export type CommandAction = 'new' | 'create' | 'edit' | 'open' | 'read' | 'help' | 'spawn';
+export type CommandAction = 'new' | 'create' | 'edit' | 'open' | 'read' | 'help';
 
 /**
  * Parsed slash command result
@@ -49,14 +49,6 @@ export const ENTITY_TYPES: Record<FormEntityType, { label: string; description: 
   prompt: {
     label: 'Prompt',
     description: 'Create a reusable prompt segment with variables',
-  },
-  pipeline: {
-    label: 'Pipeline',
-    description: 'Compose multiple prompts into a pipeline',
-  },
-  spec: {
-    label: 'Spec',
-    description: 'Define a specification or requirement',
   },
   document: {
     label: 'Document',
@@ -96,10 +88,6 @@ export const COMMAND_ACTIONS: Record<CommandAction, { aliases: string[]; descrip
     aliases: ['help', 'h', '?'],
     description: 'Show available commands',
   },
-  spawn: {
-    aliases: ['spawn', 'task'],
-    description: 'Spawn a new worker task',
-  },
 };
 
 /**
@@ -122,9 +110,8 @@ export const COMMAND_CATEGORIES: CommandCategory[] = [
     icon: '✨',
     commands: [
       { command: '/new prompt', description: 'Create a new prompt segment', action: 'new', entityType: FormEntityType.PROMPT },
-      { command: '/new pipeline', description: 'Create a new prompt pipeline', action: 'new', entityType: FormEntityType.PIPELINE },
-      { command: '/new spec', description: 'Create a new specification', action: 'new', entityType: FormEntityType.SPEC },
       { command: '/new document', description: 'Create a new document', action: 'new', entityType: FormEntityType.DOCUMENT },
+      { command: '/new agent', description: 'Create a new agent definition', action: 'new', entityType: FormEntityType.AGENT_DEFINITION },
     ],
   },
   {
@@ -133,9 +120,8 @@ export const COMMAND_CATEGORIES: CommandCategory[] = [
     icon: '✏️',
     commands: [
       { command: '/edit prompt', description: 'Edit an existing prompt', action: 'edit', entityType: FormEntityType.PROMPT },
-      { command: '/edit pipeline', description: 'Edit an existing pipeline', action: 'edit', entityType: FormEntityType.PIPELINE },
-      { command: '/edit spec', description: 'Edit an existing spec', action: 'edit', entityType: FormEntityType.SPEC },
       { command: '/edit document', description: 'Edit an existing document', action: 'edit', entityType: FormEntityType.DOCUMENT },
+      { command: '/edit agent', description: 'Edit an existing agent', action: 'edit', entityType: FormEntityType.AGENT_DEFINITION },
     ],
   },
   {
@@ -144,15 +130,6 @@ export const COMMAND_CATEGORIES: CommandCategory[] = [
     icon: '📄',
     commands: [
       { command: '/read', description: 'Load a document into context (fuzzy match)', action: 'read', entityType: FormEntityType.DOCUMENT },
-    ],
-  },
-  {
-    id: 'tasks',
-    label: 'Tasks',
-    icon: '⚡',
-    commands: [
-      { command: '/spawn', description: 'Spawn a new worker task', action: 'spawn' },
-      { command: '/task', description: 'Spawn a new worker task', action: 'spawn' },
     ],
   },
   {
@@ -201,7 +178,7 @@ function normalizeAction(input: string): CommandAction | null {
 }
 
 /**
- * Parse entity reference (e.g., "spec:spec-123" or just "spec")
+ * Parse entity reference (e.g., "prompt:prompt-123" or just "prompt")
  */
 function parseEntityRef(input: string): { entityType?: FormEntityType; entityId?: string } {
   const [type, id] = input.split(':');
@@ -244,8 +221,8 @@ export function parseSlashCommand(input: string): ParsedCommand | null {
     return null;
   }
 
-  // Help and spawn commands don't need an entity
-  if (action === 'help' || action === 'spawn') {
+  // Help command doesn't need an entity
+  if (action === 'help') {
     return { action, raw: trimmed };
   }
 
@@ -299,7 +276,7 @@ export function getCommandSuggestions(input: string): CommandSuggestion[] {
 
 /**
  * Get categorized suggestions for organized display
- * 
+ *
  * Returns categories with their matching commands filtered by the search term.
  * Empty categories are excluded.
  *
@@ -329,7 +306,7 @@ export function getCategorizedSuggestions(input: string): CommandCategory[] {
  * Check if command is complete (has all required parts)
  */
 export function isCommandComplete(command: ParsedCommand): boolean {
-  if (command.action === 'help' || command.action === 'spawn') {
+  if (command.action === 'help') {
     return true;
   }
 
@@ -377,7 +354,7 @@ export interface EntitySelectionState {
   action: CommandAction | null;
   /** The search query (partial entity ID or name) */
   searchQuery: string;
-  /** The full command prefix (e.g., "/edit spec ") */
+  /** The full command prefix (e.g., "/edit prompt ") */
   commandPrefix: string;
 }
 
@@ -390,9 +367,9 @@ export interface EntitySelectionState {
  * - User is now typing after the entity type (optionally with ":")
  *
  * @example
- * "/edit spec " → active, entityType: spec, searchQuery: ""
- * "/edit spec:my" → active, entityType: spec, searchQuery: "my"
- * "/edit spec:my-spec-id" → active, entityType: spec, searchQuery: "my-spec-id"
+ * "/edit prompt " → active, entityType: prompt, searchQuery: ""
+ * "/edit prompt:my" → active, entityType: prompt, searchQuery: "my"
+ * "/edit prompt:my-prompt-id" → active, entityType: prompt, searchQuery: "my-prompt-id"
  * "/new prompt" → not active (new doesn't need entity selection)
  */
 export function getEntitySelectionState(input: string): EntitySelectionState {
@@ -454,7 +431,7 @@ export function getEntitySelectionState(input: string): EntitySelectionState {
   const colonIndex = entityPart.indexOf(':');
 
   if (colonIndex === -1) {
-    // Format: "/edit spec " or "/edit spec"
+    // Format: "/edit prompt " or "/edit prompt"
     const entityType = isEntityType(entityPart) ? entityPart : null;
 
     if (!entityType) {
@@ -465,7 +442,7 @@ export function getEntitySelectionState(input: string): EntitySelectionState {
     const hasTrailingContent = parts.length > 2 || input.endsWith(' ');
 
     if (hasTrailingContent) {
-      // "/edit spec " or "/edit spec some-search"
+      // "/edit prompt " or "/edit prompt some-search"
       const searchQuery = parts.slice(2).join(' ');
       return {
         active: true,
@@ -479,7 +456,7 @@ export function getEntitySelectionState(input: string): EntitySelectionState {
     // Still typing entity type, not in selection mode yet
     return inactive;
   } else {
-    // Format: "/edit spec:query"
+    // Format: "/edit prompt:query"
     const typePart = entityPart.slice(0, colonIndex);
     const queryPart = entityPart.slice(colonIndex + 1);
 

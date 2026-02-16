@@ -2,8 +2,7 @@
  * Tests for bridge-init.ts
  *
  * Verifies:
- * - createBridgeServices creates all services in CLI mode
- * - createBridgeServices returns null services in Docker mode
+ * - createBridgeServices creates all services
  * - getStateManagers returns singleton by default
  * - getStateManagers accepts overrides for testing
  * - startAssistantPool/stopAssistantPool handle null gracefully
@@ -26,11 +25,9 @@ vi.mock('./pool/assistant-pool.js', () => ({
     start: vi.fn().mockResolvedValue(undefined),
     stop: vi.fn().mockResolvedValue(undefined),
   })),
-  // Mock implementations if needed
 }));
 
 vi.mock('@capybara-chat/cli-provider', () => ({
-  // Mock cli provider exports if needed, though we moved away from it for pool creation
   createClaudeCLIProvider: vi.fn(),
   GenericCLIProvider: vi.fn(),
 }));
@@ -59,7 +56,6 @@ describe('bridge-init', () => {
     it('should return state managers with default singletons', () => {
       const managers = getStateManagers(mockApiClient);
 
-      expect(managers).toHaveProperty('taskMessageQueue');
       expect(managers).toHaveProperty('concurrency');
       expect(managers).toHaveProperty('agentConfigManager');
       expect(managers).toHaveProperty('sessionContextStore');
@@ -77,12 +73,10 @@ describe('bridge-init', () => {
   });
 
   describe('createBridgeServices', () => {
-    it('should create all services in CLI mode', () => {
+    it('should create all services', () => {
       const config: BridgeConfig = {
         serverUrl: 'http://localhost:2279',
         bridgePort: 2280,
-        useDocker: false,
-        enableTaskExecutor: true,
         model: 'claude-sonnet',
       };
 
@@ -95,47 +89,16 @@ describe('bridge-init', () => {
 
       const services = createBridgeServices(deps);
 
-      expect(services.spawner).toBeDefined();
       expect(services.humanLoop).toBeDefined();
       expect(services.assistantPool).toBeDefined();
-
       expect(services.messageHandler).toBeDefined();
       expect(services.stateManagers).toBeDefined();
-    });
-
-    it('should return null pool-based services in Docker mode', () => {
-      const config: BridgeConfig = {
-        serverUrl: 'http://localhost:2279',
-        bridgePort: 2280,
-        useDocker: true, // Docker mode
-        enableTaskExecutor: false,
-      };
-
-      const deps: CreateBridgeServicesDeps = {
-        config,
-        apiClient: mockApiClient,
-        getSocket: () => mockSocket,
-        getAssistantPool: () => null,
-      };
-
-      const services = createBridgeServices(deps);
-
-      // Spawner and humanLoop always created
-      expect(services.spawner).toBeDefined();
-      expect(services.humanLoop).toBeDefined();
-
-      // Pool-based services are null in Docker mode
-      expect(services.assistantPool).toBeNull();
-
-      expect(services.messageHandler).toBeNull();
     });
 
     it('should accept custom state managers for testing', () => {
       const config: BridgeConfig = {
         serverUrl: 'http://localhost:2279',
         bridgePort: 2280,
-        useDocker: true,
-        enableTaskExecutor: false,
       };
 
       const mockConcurrency = { clearSession: vi.fn() } as any;
@@ -155,12 +118,10 @@ describe('bridge-init', () => {
       expect(services.stateManagers.concurrency).toBe(mockConcurrency);
     });
 
-    it('should use assistantPoolFactory when provided (GAP-004 fix)', () => {
+    it('should use assistantPoolFactory when provided', () => {
       const config: BridgeConfig = {
         serverUrl: 'http://localhost:2279',
         bridgePort: 2280,
-        useDocker: false,
-        enableTaskExecutor: true,
         model: 'claude-sonnet',
       };
 
@@ -190,8 +151,6 @@ describe('bridge-init', () => {
       const config: BridgeConfig = {
         serverUrl: 'http://localhost:2279',
         bridgePort: 2280,
-        useDocker: false,
-        enableTaskExecutor: true,
         model: 'claude-sonnet',
         useCliProvider: true, // CLI provider mode enabled
       };

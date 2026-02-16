@@ -32,11 +32,11 @@ describe('Context Builder', () => {
   describe('buildMinimalPrefix', () => {
     it('should build prefix for existing entity', () => {
       const result = buildMinimalPrefix(
-        { editingEntityType: 'spec', editingEntityId: 'spec-123' },
+        { editingEntityType: 'prompt', editingEntityId: 'prompt-123' },
         'Update the title'
       );
 
-      expect(result).toContain('[editing: spec/spec-123]');
+      expect(result).toContain('[editing: prompt/prompt-123]');
       expect(result).toContain('Update the title');
     });
 
@@ -64,39 +64,39 @@ describe('Context Builder', () => {
   describe('buildFullContext', () => {
     it('should build context for new entity creation', async () => {
       const result = await buildFullContext(
-        { editingEntityType: 'spec', editingEntityId: undefined },
-        'Create a new spec about authentication'
+        { editingEntityType: 'prompt', editingEntityId: undefined },
+        'Create a new prompt about authentication'
       );
 
       expect(result).toContain('Entity Creation Context');
-      expect(result).toContain('new spec');
-      expect(result).toContain('spec_create');
-      expect(result).toContain('Required: title, content');
-      expect(result).toContain('Create a new spec about authentication');
+      expect(result).toContain('new prompt');
+      expect(result).toContain('prompt_create');
+      expect(result).toContain('Required: name, content');
+      expect(result).toContain('Create a new prompt about authentication');
     });
 
     it('should build context for existing entity editing', async () => {
       mockGet.mockResolvedValue({
         ok: true,
         data: {
-          id: 'spec-123',
-          title: 'My Spec',
-          content: 'Spec content here',
-          priority: 'high',
+          id: 'prompt-123',
+          name: 'My Prompt',
+          content: 'Prompt content here',
+          tags: ['auth'],
         },
       });
 
       const result = await buildFullContext(
-        { editingEntityType: 'spec', editingEntityId: 'spec-123' },
-        'Update the priority'
+        { editingEntityType: 'prompt', editingEntityId: 'prompt-123' },
+        'Update the tags'
       );
 
       expect(result).toContain('Entity Editing Context');
-      expect(result).toContain('My Spec');
-      expect(result).toContain('spec-123');
-      expect(result).toContain('spec_get');
-      expect(result).toContain('spec_update');
-      expect(result).toContain('Update the priority');
+      expect(result).toContain('My Prompt');
+      expect(result).toContain('prompt-123');
+      expect(result).toContain('prompt_get');
+      expect(result).toContain('prompt_update');
+      expect(result).toContain('Update the tags');
     });
 
     it('should handle API fetch failure gracefully', async () => {
@@ -106,13 +106,13 @@ describe('Context Builder', () => {
       });
 
       const result = await buildFullContext(
-        { editingEntityType: 'spec', editingEntityId: 'missing-spec' },
-        'Update this spec'
+        { editingEntityType: 'prompt', editingEntityId: 'missing-prompt' },
+        'Update this prompt'
       );
 
       // Should still generate context with minimal info
       expect(result).toContain('Entity Editing Context');
-      expect(result).toContain('missing-spec');
+      expect(result).toContain('missing-prompt');
     });
 
     it('should use correct tools for different entity types', async () => {
@@ -153,14 +153,14 @@ describe('Context Builder', () => {
       mockGet.mockResolvedValue({
         ok: true,
         data: {
-          id: 'spec-1',
-          title: 'Test',
+          id: 'prompt-1',
+          name: 'Test',
           content: 'A'.repeat(500), // Very long content
         },
       });
 
       const result = await buildFullContext(
-        { editingEntityType: 'spec', editingEntityId: 'spec-1' },
+        { editingEntityType: 'prompt', editingEntityId: 'prompt-1' },
         'Edit'
       );
 

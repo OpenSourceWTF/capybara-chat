@@ -42,8 +42,6 @@ export interface UseEntitySearchOptions {
  */
 const ENTITY_API_PATHS: Record<FormEntityType, string> = {
   prompt: API_PATHS.PROMPTS,
-  pipeline: API_PATHS.PIPELINES,
-  spec: API_PATHS.SPECS,
   document: API_PATHS.DOCUMENTS,
   agentDefinition: API_PATHS.AGENT_DEFINITIONS,
 };
@@ -53,8 +51,6 @@ const ENTITY_API_PATHS: Record<FormEntityType, string> = {
  */
 const ENTITY_RESPONSE_KEYS: Record<FormEntityType, string> = {
   prompt: 'segments',
-  pipeline: 'pipelines',
-  spec: 'specs',
   document: 'documents',
   agentDefinition: 'agentDefinitions',
 };

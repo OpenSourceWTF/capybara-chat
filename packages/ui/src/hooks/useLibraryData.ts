@@ -22,7 +22,7 @@ interface BaseEntity {
 interface UseLibraryDataOptions {
   /** Full URL to fetch items from */
   url: string;
-  /** Key in response object containing the array (e.g., 'specs', 'documents') */
+  /** Key in response object containing the array (e.g., 'documents', 'segments') */
   dataKey: string;
   /** Socket events that should trigger a refetch */
   socketEvents: string[];

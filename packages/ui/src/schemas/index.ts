@@ -17,7 +17,6 @@ export {
 } from './define-schema';
 
 // Entity schemas
-export { specSchema, type SpecFormData } from './spec-schema';
 export { promptSchema, type PromptFormData, OUTPUT_TYPE_OPTIONS } from './prompt-schema';
 export { documentSchema, type DocumentFormData } from './document-schema';
 export { agentDefinitionSchema, type AgentDefinitionFormData } from './agent-definition-schema';

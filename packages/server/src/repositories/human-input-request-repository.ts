@@ -1,8 +1,8 @@
 /**
  * Human Input Request Repository
  *
- * Data access for HumanInputRequest entities (human-in-the-loop for tasks).
- * When a task needs human input, it creates a request and pauses.
+ * Data access for HumanInputRequest entities (human-in-the-loop).
+ * When a session needs human input, it creates a request and pauses.
  */
 
 import type { HumanInputRequest } from '@capybara-chat/types';
@@ -12,7 +12,7 @@ import { BaseSQLiteRepository, type FindOptions } from './base.js';
 export type HumanInputRequestStatus = 'pending' | 'responded' | 'timeout' | 'cancelled';
 
 export interface CreateHumanInputRequestDTO {
-  taskId: string;
+  sessionId: string;
   question: string;
   context?: string;
   options?: string[];
@@ -27,10 +27,10 @@ export interface RespondToHumanInputDTO {
 export interface HumanInputRequestRepository {
   findById(id: string): HumanInputRequest | null;
   findAll(options?: FindOptions): HumanInputRequest[];
-  findByTask(taskId: string): HumanInputRequest[];
+  findBySession(sessionId: string): HumanInputRequest[];
   /** 139-timeline-pagination: Add limit support to filter methods */
   findPending(options?: FindOptions): HumanInputRequest[];
-  findPendingByTask(taskId: string): HumanInputRequest | null;
+  findPendingBySession(sessionId: string): HumanInputRequest | null;
   create(data: CreateHumanInputRequestDTO): HumanInputRequest;
   respond(id: string, data: RespondToHumanInputDTO): HumanInputRequest | null;
   cancel(id: string): HumanInputRequest | null;
@@ -49,15 +49,15 @@ export class SQLiteHumanInputRequestRepository
     return 'created_at';
   }
 
-  findByTask(taskId: string): HumanInputRequest[] {
+  findBySession(sessionId: string): HumanInputRequest[] {
     const rows = this.db
-      .prepare('SELECT * FROM human_input_requests WHERE task_id = ? ORDER BY created_at DESC')
-      .all(taskId);
+      .prepare('SELECT * FROM human_input_requests WHERE session_id = ? ORDER BY created_at DESC')
+      .all(sessionId);
     return rows.map((row) => this.mapRow(row));
   }
 
   /**
-   * Get all pending human input requests (for dashboard display)
+   * Get all pending human input requests
    * 139-timeline-pagination: Add limit support
    */
   findPending(options?: FindOptions): HumanInputRequest[] {
@@ -79,12 +79,12 @@ export class SQLiteHumanInputRequestRepository
   }
 
   /**
-   * Get the pending request for a specific task (should be at most one)
+   * Get the pending request for a specific session (should be at most one)
    */
-  findPendingByTask(taskId: string): HumanInputRequest | null {
+  findPendingBySession(sessionId: string): HumanInputRequest | null {
     const row = this.db
-      .prepare("SELECT * FROM human_input_requests WHERE task_id = ? AND status = 'pending' LIMIT 1")
-      .get(taskId);
+      .prepare("SELECT * FROM human_input_requests WHERE session_id = ? AND status = 'pending' LIMIT 1")
+      .get(sessionId);
     return row ? this.mapRow(row) : null;
   }
 
@@ -96,13 +96,13 @@ export class SQLiteHumanInputRequestRepository
     this.db
       .prepare(
         `
-      INSERT INTO human_input_requests (id, task_id, question, context, options, timeout, created_at, status)
+      INSERT INTO human_input_requests (id, session_id, question, context, options, timeout, created_at, status)
       VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')
     `
       )
       .run(
         id,
-        data.taskId,
+        data.sessionId,
         data.question,
         data.context ?? null,
         data.options ? JSON.stringify(data.options) : null,
@@ -200,7 +200,7 @@ export class SQLiteHumanInputRequestRepository
     const r = row as Record<string, unknown>;
     return {
       id: r.id as string,
-      taskId: r.task_id as string,
+      sessionId: r.session_id as string,
       question: r.question as string,
       context: r.context as string | undefined,
       options: FieldTransforms.jsonArray(r.options) as string[] | undefined,

@@ -404,8 +404,8 @@ describe('Bridge Contract: Activity Events', () => {
 
     mockSocket.emit(SOCKET_EVENTS.SESSION_CONTEXT_INJECTED, {
       sessionId,
-      entityType: 'spec',
-      entityId: 'spec_123',
+      entityType: 'prompt',
+      entityId: 'prompt_123',
       contextType: 'full',
       contextPreview: 'First 100 chars...',
     });

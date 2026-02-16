@@ -2,7 +2,7 @@
  * Route Parser - Pure functions for URL ↔ navigation state conversion
  *
  * URL Schema:
- *   /                    → dashboard
+ *   /                    → prompts (default)
  *   /:tab                → library view
  *   /:tab/:entityId      → entity view mode
  *   /:tab/:entityId/edit → entity edit mode
@@ -12,7 +12,7 @@
  *   ?session=sess_xxx    → selected chat session
  */
 
-type Tab = 'dashboard' | 'specs' | 'prompts' | 'documents' | 'agents' | 'tasks' | 'sessions' | 'workspaces' | 'new-task';
+type Tab = 'prompts' | 'documents' | 'agents' | 'sessions';
 
 export interface NavigationState {
   tab: Tab;
@@ -22,15 +22,10 @@ export interface NavigationState {
 }
 
 const TAB_PATHS: Record<Tab, string> = {
-  dashboard: '',
-  specs: 'specs',
   prompts: 'prompts',
   documents: 'documents',
   agents: 'agents',
-  tasks: 'tasks',
   sessions: 'sessions',
-  workspaces: 'workspaces',
-  'new-task': 'new-task',
 };
 
 const PATH_TO_TAB: Record<string, Tab> = Object.fromEntries(
@@ -47,9 +42,9 @@ export function parseRoute(pathname: string, search: string): NavigationState {
   // Normalize: strip leading/trailing slashes, split segments
   const segments = pathname.replace(/^\/|\/$/g, '').split('/').filter(Boolean);
 
-  // "/" → dashboard
+  // "/" → default to prompts
   if (segments.length === 0) {
-    return { tab: 'dashboard', sessionId };
+    return { tab: 'prompts', sessionId };
   }
 
   // First segment is the tab
@@ -57,8 +52,8 @@ export function parseRoute(pathname: string, search: string): NavigationState {
   const tab = PATH_TO_TAB[tabPath];
 
   if (!tab) {
-    // Unknown path — default to dashboard
-    return { tab: 'dashboard', sessionId };
+    // Unknown path — default to prompts
+    return { tab: 'prompts', sessionId };
   }
 
   // "/:tab" → library
@@ -86,7 +81,7 @@ export function parseRoute(pathname: string, search: string): NavigationState {
  * Build a URL path from NavigationState
  */
 export function buildPath(state: Partial<NavigationState>): string {
-  const tab = state.tab || 'dashboard';
+  const tab = state.tab || 'prompts';
   const tabPath = TAB_PATHS[tab];
 
   let path = tabPath ? `/${tabPath}` : '/';

@@ -4,7 +4,8 @@ WORKDIR /app
 
 # Install build dependencies
 RUN apt-get update && apt-get install -y git curl python3 make g++ gosu && rm -rf /var/lib/apt/lists/*
-RUN corepack enable
+# Install pnpm globally (more reliable than corepack shim with volume mounts)
+RUN npm install -g pnpm@9
 
 # Copy workspace config
 COPY package.json pnpm-workspace.yaml tsconfig.base.json .npmrc ./

@@ -42,21 +42,21 @@ export interface BaseEntity {
  * Configuration for a library component
  */
 export interface LibraryConfig<T extends BaseEntity> {
-  /** API path for this entity type (e.g., '/api/specs') */
+  /** API path for this entity type (e.g., '/api/prompts') */
   apiPath: string;
-  /** Key in response JSON containing the array (e.g., 'specs') */
+  /** Key in response JSON containing the array (e.g., 'segments') */
   dataKey: string;
-  /** Entity type for event bus (e.g., 'spec') */
+  /** Entity type for event bus (e.g., 'prompt') */
   entityType: FormEntityType;
   /** Socket events that trigger refetch */
   socketEvents: string[];
   /** Fields to search when filtering */
   searchFields: (keyof T)[];
-  /** Command prefix shown in terminal header (e.g., 'cat specs/') */
+  /** Command prefix shown in terminal header (e.g., 'cat prompts/') */
   commandPrefix: string;
   /** Placeholder text for search input */
   searchPlaceholder?: string;
-  /** Label for new button (e.g., 'new spec') */
+  /** Label for new button (e.g., 'new prompt') */
   newButtonLabel: string;
   /** Test ID for new button */
   newButtonTestId?: string;
@@ -64,7 +64,7 @@ export interface LibraryConfig<T extends BaseEntity> {
   loadingMessage: string;
   /** Message shown when no items */
   emptyMessage: string;
-  /** Label for empty state action (e.g., 'touch new_spec') */
+  /** Label for empty state action (e.g., 'touch new_prompt') */
   emptyActionLabel: string;
   /** Delete button label for accessibility */
   deleteLabel?: string;

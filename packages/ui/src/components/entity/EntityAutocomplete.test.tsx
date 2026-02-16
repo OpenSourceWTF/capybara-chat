@@ -17,19 +17,19 @@ beforeAll(() => {
 // Helper to create selection state
 const createSelectionState = (overrides: Partial<EntitySelectionState> = {}): EntitySelectionState => ({
   active: true,
-  entityType: 'spec',
+  entityType: 'prompt',
   action: 'edit',
   searchQuery: '',
-  commandPrefix: '/edit spec:',
+  commandPrefix: '/edit prompt:',
   ...overrides,
 });
 
 // Helper to create search results
 const createResults = (count: number): EntitySearchResult[] =>
   Array.from({ length: count }, (_, i) => ({
-    id: `spec-${i + 1}`,
-    displayName: `Spec ${i + 1}`,
-    entityType: 'spec' as const,
+    id: `prompt-${i + 1}`,
+    displayName: `Prompt ${i + 1}`,
+    entityType: 'prompt' as const,
   }));
 
 describe('EntityAutocomplete', () => {
@@ -46,7 +46,7 @@ describe('EntityAutocomplete', () => {
     );
 
     expect(screen.getByTestId('entity-autocomplete')).toBeInTheDocument();
-    expect(screen.getByText(/Searching specs.../)).toBeInTheDocument();
+    expect(screen.getByText(/Searching prompts.../)).toBeInTheDocument();
   });
 
   it('renders searching state (debouncing)', () => {
@@ -61,7 +61,7 @@ describe('EntityAutocomplete', () => {
       />
     );
 
-    expect(screen.getByText(/Searching specs.../)).toBeInTheDocument();
+    expect(screen.getByText(/Searching prompts.../)).toBeInTheDocument();
   });
 
   it('renders empty state when no entities exist', () => {
@@ -76,7 +76,7 @@ describe('EntityAutocomplete', () => {
       />
     );
 
-    expect(screen.getByText(/No specs available. Create one first./)).toBeInTheDocument();
+    expect(screen.getByText(/No prompts available. Create one first./)).toBeInTheDocument();
   });
 
   it('renders no results message when search finds nothing', () => {
@@ -91,7 +91,7 @@ describe('EntityAutocomplete', () => {
       />
     );
 
-    expect(screen.getByText(/No specs found matching "nonexistent"/)).toBeInTheDocument();
+    expect(screen.getByText(/No prompts found matching "nonexistent"/)).toBeInTheDocument();
   });
 
   it('renders list of results', () => {
@@ -108,10 +108,10 @@ describe('EntityAutocomplete', () => {
       />
     );
 
-    expect(screen.getByText('Spec 1')).toBeInTheDocument();
-    expect(screen.getByText('Spec 2')).toBeInTheDocument();
-    expect(screen.getByText('Spec 3')).toBeInTheDocument();
-    expect(screen.getByText('spec-1')).toBeInTheDocument();
+    expect(screen.getByText('Prompt 1')).toBeInTheDocument();
+    expect(screen.getByText('Prompt 2')).toBeInTheDocument();
+    expect(screen.getByText('Prompt 3')).toBeInTheDocument();
+    expect(screen.getByText('prompt-1')).toBeInTheDocument();
   });
 
   it('highlights selected item', () => {

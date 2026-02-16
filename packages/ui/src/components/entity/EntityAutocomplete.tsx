@@ -2,14 +2,14 @@
  * EntityAutocomplete - Dropdown for selecting entities by name or ID
  *
  * Shows matching entities when user is typing an entity reference
- * in a slash command (e.g., "/edit spec my-spec").
+ * in a slash command (e.g., "/edit prompt my-prompt").
  */
 
 import { useEffect, useRef } from 'react';
 import type { FormEntityType } from '@capybara-chat/types';
 import type { EntitySearchResult } from '../../hooks/useEntitySearch';
 import type { EntitySelectionState } from '../../lib/slash-command-parser';
-import { FileText, GitBranch, BookOpen, File, Bot } from 'lucide-react';
+import { FileText, File, Bot } from 'lucide-react';
 
 /**
  * Props for EntityAutocomplete
@@ -34,8 +34,6 @@ interface EntityAutocompleteProps {
  */
 const ENTITY_ICONS: Record<FormEntityType, typeof FileText> = {
   prompt: FileText,
-  pipeline: GitBranch,
-  spec: BookOpen,
   document: File,
   agentDefinition: Bot,
 };

@@ -9,14 +9,13 @@
  */
 
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { Syringe } from 'lucide-react';
 import { useSessionMessages, type UIChatMessage } from '../../hooks/useSessionMessages';
 import { useSessionResponseEvents, useSessionToolUseEvents, type SessionResponseData, type MessageStatusData, type SessionErrorData, type SessionContextInjectedData, type SessionToolUseData } from '../../hooks/useSessionSocketEvents';
 import { useSessionActivityState } from '../../hooks/useSessionActivityState';
 import { useSessionMemories } from '../../hooks/useSessionMemories';
 import { useSessionCreatedEntities } from '../../hooks/useSessionCreatedEntities';
 // Note: SessionActivityPanel moved to SessionDetailView in left pane (124-continuation)
-import { MessageInputBar, type InputContextAction } from './MessageInputBar';
+import { MessageInputBar } from './MessageInputBar';
 import { MessageList } from './MessageList';
 import { ChatSettingsDialog } from '../modals/ChatSettingsDialog';
 import { NewChatModal } from '../modals/NewChatModal';
@@ -30,7 +29,7 @@ import { SessionDropdown } from '../session/SessionDropdown';
 import { createLogger } from '../../lib/logger';
 import { useServer } from '../../context/ServerContext';
 import { useSocket } from '../../context/SocketContext';
-import { SessionType, MessageStatus, SOCKET_EVENTS, sessionPath, API_PATHS, WorkerTaskState, type AgentModel, type ContextUsage, type SocketEventPayloads } from '@capybara-chat/types';
+import { SessionType, MessageStatus, SOCKET_EVENTS, sessionPath, type AgentModel, type ContextUsage, type SocketEventPayloads } from '@capybara-chat/types';
 import { api } from '../../lib/api';
 import { useLayoutMode } from '../../context/LayoutModeContext';
 import { useChatPreferences } from '../../hooks/useChatPreferences';
@@ -52,30 +51,16 @@ interface AgentDefinitionResponse {
   resolvedSystemPrompt?: string;
 }
 
-// 168-right-bar-elimination: Task info for context-sensitive actions
-interface TaskInfo {
-  id: string;
-  state: WorkerTaskState;
-}
-
-/** Task states where reinject is not useful (task is done or explicitly cancelled) */
-const REINJECT_EXCLUDED_STATES: WorkerTaskState[] = [
-  WorkerTaskState.COMPLETE,
-  WorkerTaskState.CANCELLED,
-];
-
 interface GeneralConversationProps {
   sessionId: string | null;
   onSlashCommand?: (command: import('../../lib/slash-command-parser').ParsedCommand) => void;
   /** Navigate to session detail view in left pane */
   onViewSession?: (sessionId: string) => void;
-  /** Create a new chat session (168-right-bar-elimination) */
-  onNewChat?: (agentDefinitionId?: string, workspaceId?: string) => void;
-  /** Spawn a new task (168-right-bar-elimination) */
-  onNewTask?: () => void;
-  /** Switch to a different session (168-right-bar-elimination) */
+  /** Create a new chat session */
+  onNewChat?: (agentDefinitionId?: string) => void;
+  /** Switch to a different session */
   onSessionSelect?: (sessionId: string) => void;
-  /** Delete a session (168-right-bar-elimination) */
+  /** Delete a session */
   onSessionDelete?: (sessionId: string) => void;
 }
 
@@ -108,12 +93,11 @@ export function GeneralConversation({
   onSlashCommand,
   onViewSession,
   onNewChat,
-  onNewTask,
   onSessionSelect,
   onSessionDelete,
 }: GeneralConversationProps) {
   const { serverUrl } = useServer();
-  const { emit, processingSessions, clearProcessingSession, on, off } = useSocket();
+  const { emit, processingSessions, on, off } = useSocket();
   const { editingContext } = useLayoutMode();
   const { prefs, updatePrefs } = useChatPreferences();
 
@@ -160,9 +144,8 @@ export function GeneralConversation({
   const [copiedId, setCopiedId] = useState<'session' | 'claude' | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
 
-  // 168-right-bar-elimination: NewChatModal and task detection state
+  // 168-right-bar-elimination: NewChatModal state
   const [newChatModalOpen, setNewChatModalOpen] = useState(false);
-  const [taskInfo, setTaskInfo] = useState<TaskInfo | null>(null);
 
   // Context visibility feature: session type for filtering context meter visibility
   const [sessionType, setSessionType] = useState<string | null>(null);
@@ -187,15 +170,11 @@ export function GeneralConversation({
       // 143-chat-system-prompt-display: Reset prompt state
       setSystemPrompt(null);
       setAgentName(null);
-      setTaskInfo(null);
       setSessionType(null);
       return;
     }
 
     const fetchSessionDetails = async () => {
-      // GAP-002 fix: Clear stale taskInfo before fetch to prevent wrong-session reinject
-      setTaskInfo(null);
-
       try {
         const response = await api.get(`${serverUrl}${sessionPath(sessionId)}`);
         if (response.ok) {
@@ -205,30 +184,9 @@ export function GeneralConversation({
           setAgentDefinitionId(data.agentDefinitionId || null);
           setSessionModel(data.model || null);  // 135-assistant-model-switch
           setSessionType(data.sessionType || null);  // Context visibility feature
-
-          // 168-right-bar-elimination: Detect task sessions for reinject action
-          if (data.sessionType === SessionType.TASK) {
-            fetchTaskInfo(sessionId);
-          } else {
-            setTaskInfo(null);
-          }
         }
       } catch (error) {
         log.debug('Failed to fetch session details', { error });
-      }
-    };
-
-    const fetchTaskInfo = async (sid: string) => {
-      try {
-        const res = await api.get(`${serverUrl}${API_PATHS.TASKS}/by-session/${sid}`);
-        if (res.ok) {
-          const task = await res.json() as TaskInfo;
-          setTaskInfo(task);
-        } else {
-          setTaskInfo(null);
-        }
-      } catch {
-        setTaskInfo(null);
       }
     };
 
@@ -469,18 +427,7 @@ export function GeneralConversation({
   // isSessionProcessing is set when SESSION_MESSAGE arrives (server confirmed processing)
   // and cleared when MESSAGE_STATUS:completed arrives. This is the most reliable signal.
   //
-  // 195-ui-usability-pass: Don't show thinking for complete/cancelled tasks
-  // Sometimes processingSessions isn't cleared properly for finished tasks
-  const isTaskFinished = taskInfo && REINJECT_EXCLUDED_STATES.includes(taskInfo.state);
-  const isThinking = !isTaskFinished && (sending || isWaitingForResponse || isSessionProcessing);
-
-  // 195-ui-usability-pass: Clear stale processingSessions when task is finished
-  // This is a defensive measure - if MESSAGE_STATUS:completed wasn't received, clear it here
-  useEffect(() => {
-    if (isTaskFinished && isSessionProcessing && sessionId) {
-      clearProcessingSession(sessionId);
-    }
-  }, [isTaskFinished, isSessionProcessing, sessionId, clearProcessingSession]);
+  const isThinking = sending || isWaitingForResponse || isSessionProcessing;
 
   // Pick a new random phrase when we start thinking
   useEffect(() => {
@@ -756,68 +703,18 @@ export function GeneralConversation({
     });
   };
 
-  // 168-right-bar-elimination: Handle stop generation
-  const handleStop = useCallback(async () => {
+  // Handle stop generation
+  const handleStop = useCallback(() => {
     if (!sessionId) return;
-
-    // For task sessions, cancel the task
-    if (taskInfo) {
-      if (REINJECT_EXCLUDED_STATES.includes(taskInfo.state)) return;
-
-      try {
-        await api.post(`${serverUrl}${API_PATHS.TASKS}/${taskInfo.id}/cancel`, {
-          reason: 'Stopped by user',
-        });
-        log.info('Task cancelled via stop button', { taskId: taskInfo.id });
-      } catch (err) {
-        log.error('Failed to cancel task', { error: err });
-      }
-      return;
-    }
-
-    // For regular sessions, emit stop event
     log.info('Stopping session generation', { sessionId });
     emit(SOCKET_EVENTS.SESSION_STOP, { sessionId });
     setSending(false);
-  }, [sessionId, taskInfo, serverUrl, emit]);
+  }, [sessionId, emit]);
 
-  // 168-right-bar-elimination: Handle reinject prompt for task sessions
-  const handleReinject = useCallback(async () => {
-    if (!taskInfo || !sessionId) return;
-
-    try {
-      const res = await api.post(`${serverUrl}${API_PATHS.TASKS}/${taskInfo.id}/reinject-prompt`);
-      if (res.ok) {
-        log.info('Reinjected prompt for task', { taskId: taskInfo.id });
-        refresh();
-      }
-    } catch (err) {
-      log.error('Failed to reinject prompt', { error: err });
-    }
-  }, [taskInfo, sessionId, serverUrl, refresh]);
-
-  // 168-right-bar-elimination: Handle new chat via modal
-  const handleNewChatFromModal = useCallback((agentDefinitionId?: string, workspaceId?: string) => {
-    onNewChat?.(agentDefinitionId, workspaceId);
+  // Handle new chat via modal
+  const handleNewChatFromModal = useCallback((agentDefinitionId?: string) => {
+    onNewChat?.(agentDefinitionId);
   }, [onNewChat]);
-
-  // 168-right-bar-elimination: Build context-sensitive actions for compose menu
-  const contextActions = useMemo<InputContextAction[]>(() => {
-    const actions: InputContextAction[] = [];
-
-    // Reinject for task sessions
-    if (taskInfo) {
-      if (!REINJECT_EXCLUDED_STATES.includes(taskInfo.state)) {
-        actions.push({
-          label: 'REINJECT_PROMPT',
-          icon: <Syringe className="w-3.5 h-3.5" />,
-          onClick: handleReinject,
-        });
-      }
-    }
-
-    return actions;
-  }, [taskInfo, handleReinject]);
 
   // Empty state when no session - but still show input for slash commands
   if (!sessionId) {
@@ -847,7 +744,6 @@ export function GeneralConversation({
             onSessionSelect={onSessionSelect}
             onSessionDelete={onSessionDelete}
             onNewChat={() => setNewChatModalOpen(true)}
-            onNewTask={onNewTask}
           />
         )}
         <div className="flex-1 flex items-center justify-center">
@@ -864,7 +760,6 @@ export function GeneralConversation({
           onSend={() => { }}
           onSlashCommand={onSlashCommand}
           onNewChat={() => setNewChatModalOpen(true)}
-          onNewTask={onNewTask}
           placeholder="Type /help for commands, or select a chat to send messages"
         />
         {/* 168-right-bar-elimination: New chat modal */}
@@ -903,7 +798,6 @@ export function GeneralConversation({
           onSessionSelect={onSessionSelect}
           onSessionDelete={onSessionDelete}
           onNewChat={() => setNewChatModalOpen(true)}
-          onNewTask={onNewTask}
         />
       )}
 
@@ -1005,8 +899,6 @@ export function GeneralConversation({
         onSend={handleSend}
         onSlashCommand={onSlashCommand}
         onNewChat={() => setNewChatModalOpen(true)}
-        onNewTask={onNewTask}
-        contextActions={contextActions}
         isProcessing={isThinking}
         onStop={handleStop}
       />
@@ -1029,7 +921,6 @@ export function GeneralConversation({
         onDismissContextReset={clearContextReset}
         onViewSession={onViewSession ? () => onViewSession(sessionId) : undefined}
         activityCount={activityCount}
-        taskInfo={taskInfo}
       />
 
       {/* 168-right-bar-elimination: New chat modal */}

@@ -78,7 +78,6 @@ describe('SessionDropdown', () => {
     onSessionSelect: vi.fn(),
     onSessionDelete: vi.fn(),
     onNewChat: vi.fn(),
-    onNewTask: vi.fn(),
   };
 
   beforeEach(() => {
@@ -584,29 +583,6 @@ describe('SessionDropdown', () => {
       await user.click(screen.getByText('NEW_CHAT'));
 
       expect(onNewChat).toHaveBeenCalled();
-    });
-
-    it('should render TASK button when onNewTask is provided', async () => {
-      const user = userEvent.setup();
-      render(<SessionDropdown {...defaultProps} />);
-
-      const trigger = screen.getByRole('button', { name: /session/i });
-      await user.click(trigger);
-
-      expect(screen.getByText('TASK')).toBeInTheDocument();
-    });
-
-    it('should call onNewTask when TASK is clicked', async () => {
-      const user = userEvent.setup();
-      const onNewTask = vi.fn();
-      render(<SessionDropdown {...defaultProps} onNewTask={onNewTask} />);
-
-      const trigger = screen.getByRole('button', { name: /session/i });
-      await user.click(trigger);
-
-      await user.click(screen.getByText('TASK'));
-
-      expect(onNewTask).toHaveBeenCalled();
     });
 
     it('should not render NEW_CHAT button when onNewChat is not provided', async () => {

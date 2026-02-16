@@ -5,7 +5,7 @@
  * Design: Terminal-inspired with glowing accents and staggered animations.
  */
 
-import { Terminal, Sparkles, FileText, BookOpen, HelpCircle } from 'lucide-react';
+import { Terminal, Sparkles, FileText, HelpCircle, Bot } from 'lucide-react';
 import { ALL_SUGGESTIONS } from '../../lib/slash-command-parser';
 import type { CommandSuggestion } from '../../lib/slash-command-parser';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogBody, DialogFooter } from '../ui/Dialog';
@@ -27,9 +27,8 @@ const getEntityIcon = (suggestion: CommandSuggestion) => {
   if (suggestion.action === 'help') return HelpCircle;
   switch (suggestion.entityType) {
     case 'prompt': return Sparkles;
-    case 'spec': return FileText;
-    case 'document': return BookOpen;
-    case 'pipeline': return Terminal;
+    case 'document': return FileText;
+    case 'agentDefinition': return Bot;
     default: return Terminal;
   }
 };

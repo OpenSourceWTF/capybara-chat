@@ -4,63 +4,12 @@
  * Dependency interfaces for testability. These enable type-safe mocking
  * without monkey-patching or module mocking.
  *
- * Usage in production: Use default implementations (Docker, fs, etc.)
+ * Usage in production: Use default implementations
  * Usage in tests: Pass mock implementations via dependency injection
  */
 
-import type { Stats } from 'fs';
 // C3 fix: Import proper types for session fields
 import type { SessionType, SessionStatus, SessionMode } from '@capybara-chat/types';
-
-/**
- * Docker container interface - abstracts Docker operations
- */
-export interface IContainer {
-  id: string;
-  start(): Promise<void>;
-  stop(options?: { t?: number }): Promise<void>;
-  remove(): Promise<void>;
-  pause(): Promise<void>;
-  unpause(): Promise<void>;
-  logs(options: { stdout?: boolean; stderr?: boolean; tail?: number }): Promise<Buffer | string>;
-}
-
-export interface ContainerCreateOptions {
-  Image: string;
-  Env?: string[];
-  HostConfig?: {
-    NetworkMode?: string;
-    Binds?: string[];
-    CapDrop?: string[];
-    ReadonlyRootfs?: boolean;
-    Tmpfs?: Record<string, string>;
-    Memory?: number;
-    NanoCpus?: number;
-    PidsLimit?: number;
-    SecurityOpt?: string[];
-  };
-  User?: string;
-}
-
-export interface IDocker {
-  createContainer(options: ContainerCreateOptions): Promise<IContainer>;
-}
-
-/**
- * Filesystem interface - abstracts file operations
- */
-export interface IFilesystem {
-  existsSync(path: string): boolean;
-  readdirSync(path: string): string[];
-  statSync(path: string): Stats;
-}
-
-/**
- * Git command executor interface
- */
-export interface IGitExecutor {
-  exec(cwd: string, command: string): string;
-}
 
 /**
  * API client result type
@@ -85,8 +34,6 @@ export interface BridgeConfig {
   serverUrl: string;
   bridgePort: number;
   apiKey?: string;
-  useDocker: boolean;
-  enableTaskExecutor: boolean;
   model?: string;
   allowDevKey?: boolean;
   /**
@@ -119,17 +66,15 @@ export interface BridgeConfig {
 }
 
 /**
- * Session data from server including workspace context and editing state.
+ * Session data from server including editing state.
  * Used by bridge to fetch session details for resumption and context injection.
  * C3 fix: Use proper enum types from @capybara-chat/types instead of strings
  */
 export interface ServerSession {
   id?: string;
   claudeSessionId?: string;
-  worktreePath?: string;
-  workspaceId?: string;
   agentDefinitionId?: string;
-  /** Session type (task, agent, assistant:*, etc.) */
+  /** Session type (agent, assistant:*, etc.) */
   sessionType?: SessionType;
   /** Session status (running, complete, failed, etc.) */
   status?: SessionStatus;
@@ -144,16 +89,3 @@ export interface ServerSession {
   /** 032-multitenancy: Session owner (GitHub login). Used to scope MCP API calls. */
   createdBy?: string | null;
 }
-
-// =============================================================================
-// Future: Factory Interfaces for Full DI (deferred to Phase 2.2-2.3)
-// =============================================================================
-//
-// When needed for testing, add:
-// - IAssistantPoolFactory: Factory for creating AssistantPool instances
-// - ISocketFactory: Factory for creating Socket.io connections
-// - IAssistantPool: Interface describing pool methods
-// - ISocket: Interface describing socket methods
-//
-// Currently, testability is achieved via getter injection (getSocket, getAssistantPool)
-// rather than full factory DI. This is sufficient for most testing scenarios.

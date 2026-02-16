@@ -310,7 +310,7 @@ describe('GAP-008: embedToolsInMessages', () => {
         id: 'evt-001',
         sessionId: 'sess-001',
         type: 'context_injected',
-        metadata: { entityType: 'spec' },
+        metadata: { entityType: 'prompt' },
         createdAt: 1000,
       } as TimelineItem,
       {

@@ -1,7 +1,7 @@
 /**
  * Agent Definition Schema (UI)
  *
- * Pattern: Matches spec-schema.ts with defineEntitySchema
+ * Pattern: Matches prompt-schema.ts with defineEntitySchema
  * Validated against shared Zod schema from @capybara-chat/types.
  */
 
@@ -39,7 +39,6 @@ const MODEL_OPTIONS: SelectOption[] = [
 const ROLE_OPTIONS: SelectOption[] = [
   { value: AgentDefinitionRole.SUBAGENT, label: 'Subagent (delegation only)' },
   { value: AgentDefinitionRole.ASSISTANT, label: 'Assistant (New Chat picker)' },
-  { value: AgentDefinitionRole.TASK_AGENT, label: 'Task Agent (long-running work)' },
 ];
 
 export const AVAILABLE_TOOLS: SelectOption[] = [

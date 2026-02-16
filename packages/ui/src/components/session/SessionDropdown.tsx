@@ -15,7 +15,7 @@
  */
 
 import React, { useState, useRef, useEffect, useMemo, useCallback, useId } from 'react';
-import { ChevronDown, Zap, Plus, Pencil, Trash2, Check, X, Loader2, DollarSign } from 'lucide-react';
+import { ChevronDown, Plus, Pencil, Trash2, Check, X, Loader2, DollarSign } from 'lucide-react';
 import { Button, TerminalSearchBar } from '../ui';
 import { useSocket } from '../../context/SocketContext';
 import { useSessionList } from '../../hooks/useSessionList';
@@ -27,7 +27,6 @@ interface SessionDropdownProps {
   onSessionSelect: (sessionId: string) => void;
   onSessionDelete?: (sessionId: string) => void;
   onNewChat?: (agentDefinitionId?: string) => void;
-  onNewTask?: () => void;
 }
 
 const SESSIONS_PER_PAGE = 20;
@@ -37,7 +36,6 @@ export function SessionDropdown({
   onSessionSelect,
   onSessionDelete,
   onNewChat,
-  onNewTask,
 }: SessionDropdownProps) {
   const { processingSessions } = useSocket();
   const [open, setOpen] = useState(false);
@@ -348,9 +346,9 @@ export function SessionDropdown({
             )}
           </div>
 
-          {/* Footer: New Chat + Task */}
-          <div className="flex-shrink-0 px-3 py-2 border-t border-border/40 flex gap-2">
-            {onNewChat && (
+          {/* Footer: New Chat */}
+          {onNewChat && (
+            <div className="flex-shrink-0 px-3 py-2 border-t border-border/40 flex gap-2">
               <Button
                 variant="outline"
                 size="sm"
@@ -361,20 +359,8 @@ export function SessionDropdown({
                 <Plus className="w-3 h-3 mr-1" />
                 NEW_CHAT
               </Button>
-            )}
-            {onNewTask && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => { setOpen(false); onNewTask(); }}
-                className="h-8 px-3 font-mono text-xs uppercase"
-                title="Spawn new worker task"
-              >
-                <Zap className="w-3 h-3 mr-1" />
-                TASK
-              </Button>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -424,9 +410,7 @@ const SessionOption = React.forwardRef<HTMLDivElement, SessionOptionProps>(
 
     // Session Type Indicator
     const isAgentSession = session.sessionType === 'agent';
-    const isTaskSession = session.sessionType === 'task';
-    const showTypeIndicator = isAgentSession || isTaskSession;
-    const typeTag = isAgentSession ? 'AGENT' : 'TASK';
+    const showTypeIndicator = isAgentSession;
 
     const handleStartRename = (e: React.MouseEvent) => {
       e.stopPropagation();
@@ -486,11 +470,8 @@ const SessionOption = React.forwardRef<HTMLDivElement, SessionOptionProps>(
         {/* Type + Status Tags: Fixed width for alignment */}
         <div className="flex items-center gap-1 shrink-0">
           {showTypeIndicator && (
-            <span className={cn(
-              "text-[10px] font-bold",
-              isAgentSession ? "text-blue-500" : "text-purple-600"
-            )}>
-              [{typeTag}]
+            <span className="text-[10px] font-bold text-blue-500">
+              [AGENT]
             </span>
           )}
           <span className={cn("font-bold flex items-center gap-1", statusColor)}>

@@ -45,9 +45,6 @@ interface TagCount {
  * Map API paths to socket events for real-time updates
  */
 function getSocketEventsForPath(apiPath: string): string[] {
-  if (apiPath.includes('/specs')) {
-    return [SOCKET_EVENTS.SPEC_CREATED, SOCKET_EVENTS.SPEC_UPDATED, SOCKET_EVENTS.SPEC_DELETED];
-  }
   if (apiPath.includes('/documents')) {
     return [SOCKET_EVENTS.DOCUMENT_CREATED, SOCKET_EVENTS.DOCUMENT_UPDATED, SOCKET_EVENTS.DOCUMENT_DELETED];
   }

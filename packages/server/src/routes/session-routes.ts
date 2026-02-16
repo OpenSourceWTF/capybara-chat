@@ -88,7 +88,7 @@ export function createSessionRoutes(
   // POST /api/sessions - Create new session
   router.post('/', validateBody(CreateSessionSchema), asyncHandler(async (req, res) => {
     const { id: userId } = (req as AuthenticatedRequest).user;
-    const { specId, workspaceId, worktreePath, agentId, agentDefinitionId, claudeSessionId, forkedFromId, type, sessionType: bodySessionType } = req.body;
+    const { agentDefinitionId, claudeSessionId, forkedFromId, type, sessionType: bodySessionType } = req.body;
 
     // No spec/agentRepo checks in stripped version
 
@@ -97,11 +97,7 @@ export function createSessionRoutes(
 
     const createSessionWithEvent = () => {
       const session = sessionRepo.create({
-        specId,
-        workspaceId,
-        worktreePath,
         sessionType: sessionType as import('@capybara-chat/types').SessionType,
-        agentId,
         agentDefinitionId,
         claudeSessionId,
         forkedFromId,
@@ -129,12 +125,12 @@ export function createSessionRoutes(
   router.patch('/:id', validateBody(UpdateSessionSchema), asyncHandler(async (req, res) => {
     const { id: userId, role } = (req as AuthenticatedRequest).user;
     const {
-      name, status, agentId, containerId, hidden, claudeSessionId, workspaceId, worktreePath,
-      mode: model, editingEntityType, editingEntityId, formContextInjected,
+      name, status, hidden, claudeSessionId,
+      model, editingEntityType, editingEntityId, formContextInjected,
     } = req.body;
     const session = requireFound(
       sessionRepo.forUser(userId, role, false).update(req.params.id, {
-        name, status, agentId, containerId, hidden, claudeSessionId, workspaceId, worktreePath,
+        name, status, hidden, claudeSessionId,
         model, editingEntityType, editingEntityId, formContextInjected,
       }),
       'Session'
@@ -204,9 +200,7 @@ export function createSessionRoutes(
     const { id: userId } = (req as AuthenticatedRequest).user;
     const parent = requireOwnSession(req, req.params.id);
     const forked = sessionRepo.create({
-      specId: parent.specId,
       sessionType: parent.sessionType,
-      agentId: req.body.agentId ?? parent.agentId,
       agentDefinitionId: parent.agentDefinitionId,
       claudeSessionId: parent.claudeSessionId,
       forkedFromId: parent.id,

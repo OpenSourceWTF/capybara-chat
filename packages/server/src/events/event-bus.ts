@@ -31,7 +31,7 @@ export class CapybaraEventBus implements EventBus {
     };
 
     // Log for debugging
-    log.debug(`Event: ${event.type}`, { specId: event.metadata?.specId, sessionId: event.metadata?.sessionId });
+    log.debug(`Event: ${event.type}`, { sessionId: event.metadata?.sessionId });
 
     // Notify type-specific handlers
     const typeHandlers = this.handlers.get(event.type);

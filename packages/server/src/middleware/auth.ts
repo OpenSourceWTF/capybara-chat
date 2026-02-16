@@ -66,7 +66,7 @@ export interface AuthenticatedRequest extends Request {
 // ===== JWT helpers =====
 
 export async function createAccessToken(user: User): Promise<string> {
-  return new SignJWT({ githubLogin: user.githubLogin, role: user.role })
+  return new SignJWT({ username: user.username, role: user.role })
     .setProtectedHeader({ alg: 'HS256' })
     .setSubject(user.id)
     .setIssuer(JWT_ISSUER)
@@ -104,7 +104,7 @@ export function apiKeyAuth(req: Request, res: Response, next: NextFunction): voi
   (req as AuthenticatedRequest).authenticated = true;
   (req as AuthenticatedRequest).user = {
     id: 'system',
-    githubLogin: 'system',
+    username: 'system',
     role: 'admin' as UserRole,
     name: 'System',
     avatarUrl: null,
@@ -120,6 +120,20 @@ export async function dualAuth(req: Request, res: Response, next: NextFunction):
     const authHeader = req.headers.authorization;
     if (authHeader?.startsWith('Bearer ')) {
       const token = authHeader.slice(7);
+
+      // Standalone mode bypass: Accept "mock-token"
+      if (token === 'mock-token') {
+        (req as AuthenticatedRequest).authenticated = true;
+        (req as AuthenticatedRequest).user = {
+          id: 'user',
+          username: 'user',
+          role: 'admin',
+          name: 'User',
+          avatarUrl: null
+        };
+        return next();
+      }
+
       try {
         const { payload } = await jwtVerify(token, getJwtSecret(), {
           issuer: JWT_ISSUER,
@@ -128,7 +142,7 @@ export async function dualAuth(req: Request, res: Response, next: NextFunction):
         (req as AuthenticatedRequest).authenticated = true;
         (req as AuthenticatedRequest).user = {
           id: payload.sub as string,
-          githubLogin: payload.githubLogin as string,
+          username: payload.username as string,
           role: payload.role as UserRole,
           name: '', // Will be enriched if needed
           avatarUrl: null,
@@ -152,7 +166,7 @@ export async function dualAuth(req: Request, res: Response, next: NextFunction):
         if (user) {
           (req as AuthenticatedRequest).user = {
             id: user.id,
-            githubLogin: user.githubLogin,
+            username: user.username,
             role: user.role,
             name: user.name,
             avatarUrl: user.avatarUrl,
@@ -164,7 +178,7 @@ export async function dualAuth(req: Request, res: Response, next: NextFunction):
       // API key without user context → system/admin access
       (req as AuthenticatedRequest).user = {
         id: 'system',
-        githubLogin: 'system',
+        username: 'system',
         role: 'admin' as UserRole,
         name: 'System',
         avatarUrl: null,
@@ -214,6 +228,14 @@ export async function socketDualAuth(
     // Strategy 1: JWT
     const token = socket.handshake.auth?.token;
     if (token) {
+      // Standalone mode bypass
+      if (token === 'mock-token') {
+        socket.data.userId = 'user';
+        socket.data.userRole = 'admin';
+        socket.data.username = 'user';
+        return next();
+      }
+
       try {
         const { payload } = await jwtVerify(token, getJwtSecret(), {
           issuer: JWT_ISSUER,
@@ -221,7 +243,7 @@ export async function socketDualAuth(
         });
         socket.data.userId = payload.sub as string;
         socket.data.userRole = payload.role as string;
-        socket.data.githubLogin = payload.githubLogin as string;
+        socket.data.username = payload.username as string;
         return next();
       } catch {
         // Fall through
@@ -234,7 +256,7 @@ export async function socketDualAuth(
     if (requestApiKey && apiKey && requestApiKey === apiKey) {
       socket.data.userId = 'system';
       socket.data.userRole = 'admin';
-      socket.data.githubLogin = 'system';
+      socket.data.username = 'system';
       return next();
     }
 

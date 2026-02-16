@@ -7,7 +7,7 @@ import tailwindcss from '@tailwindcss/vite';
 // DOCKER env var is set in compose.dev.yaml
 const proxyTarget = process.env.DOCKER === 'true'
   ? 'http://server:2279'
-  : 'http://localhost:2279';
+  : 'http://localhost:3279';
 
 export default defineConfig({
   define: {
@@ -19,7 +19,7 @@ export default defineConfig({
     react(),
   ],
   server: {
-    port: 2281, // CAPY + 2
+    port: 3281,
     host: '0.0.0.0', // Allow access from host when in Docker
     proxy: {
       '/api': {

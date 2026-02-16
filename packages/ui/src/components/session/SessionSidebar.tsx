@@ -7,7 +7,7 @@
  */
 
 import { useState, useCallback, useMemo } from 'react';
-import { Plus, Zap } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { SessionCard } from './SessionCard';
 import { CollapsedSidebar } from './CollapsedSidebar';
@@ -22,7 +22,6 @@ interface SessionSidebarProps {
   onSessionSelect: (sessionId: string) => void;
   onSessionDelete?: (sessionId: string) => void;
   onNewChat?: (agentDefinitionId?: string) => void;
-  onNewTask?: () => void;
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
   isPinned?: boolean;
@@ -33,7 +32,6 @@ export function SessionSidebar({
   onSessionSelect,
   onSessionDelete,
   onNewChat,
-  onNewTask,
   isCollapsed = false,
   onToggleCollapse,
   isPinned = false,
@@ -155,25 +153,9 @@ export function SessionSidebar({
         )}
       </div>
 
-      {/* Footer - New Chat & New Task */}
+      {/* Footer - New Chat */}
       <div className="session-sidebar-footer">
-        <div className="flex gap-2">
-          <div className="flex-1">
-            <NewChatMenu onSelect={handleNewChat} />
-          </div>
-          {onNewTask && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onNewTask}
-              className="h-8 px-3 font-mono text-xs uppercase"
-              title="Spawn new worker task"
-            >
-              <Zap className="w-3 h-3 mr-1" />
-              TASK
-            </Button>
-          )}
-        </div>
+        <NewChatMenu onSelect={handleNewChat} />
       </div>
     </div>
   );

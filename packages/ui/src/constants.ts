@@ -67,17 +67,12 @@ export const API = {
 
 // ===== Auth Configuration =====
 export const AUTH = {
-  /** Where the server redirects after GitHub OAuth */
-  CALLBACK_PATH: '/auth/callback',
   /** REST endpoints */
   ENDPOINTS: {
-    LOGIN: '/api/auth/github',
     REFRESH: '/api/auth/refresh',
     LOGOUT: '/api/auth/logout',
     ME: '/api/auth/me',
   },
-  /** localStorage key for remembering auth state (not the token itself) */
-  STORAGE_KEY: 'capybara-auth-known',
 } as const;
 
 // ===== Display Constants =====

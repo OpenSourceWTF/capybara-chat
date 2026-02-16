@@ -13,8 +13,6 @@ import {
   requireFound,
   requireDeleted,
 } from '@capybara-chat/types';
-import { GitHubTokenNotConfiguredError } from '../utils/github.js';
-
 const log = createLogger('ErrorHandler');
 
 // Re-export for backwards compatibility
@@ -58,9 +56,6 @@ export function errorMiddleware(
   if (error instanceof HttpError) {
     statusCode = error.statusCode;
     code = error.code ?? 'ERROR';
-  } else if (error instanceof GitHubTokenNotConfiguredError) {
-    statusCode = 400;
-    code = 'BAD_REQUEST';
   } else {
     statusCode = 500;
     code = 'INTERNAL_ERROR';

@@ -251,58 +251,8 @@ export function SocketProvider({ serverUrl = SERVER_DEFAULTS.SERVER_URL, authTok
       });
     });
 
-    // 196-session-status-sanity: Clear processingSessions when tasks complete/fail/cancel
-    // These events now include sessionId for exactly this purpose
-    socket.on(SOCKET_EVENTS.TASK_COMPLETE, (data: SocketEventPayloads[typeof SOCKET_EVENTS.TASK_COMPLETE]) => {
-      if (data.sessionId) {
-        log.info('TASK_COMPLETE received - removing from processingSessions', { taskId: data.taskId, sessionId: data.sessionId });
-        setProcessingSessions((prev) => {
-          const next = new Set(prev);
-          next.delete(data.sessionId!);
-          return next;
-        });
-      }
-    });
-
-    socket.on(SOCKET_EVENTS.TASK_FAILED, (data: SocketEventPayloads[typeof SOCKET_EVENTS.TASK_FAILED]) => {
-      if (data.sessionId) {
-        log.info('TASK_FAILED received - removing from processingSessions', { taskId: data.taskId, sessionId: data.sessionId });
-        setProcessingSessions((prev) => {
-          const next = new Set(prev);
-          next.delete(data.sessionId!);
-          return next;
-        });
-      }
-    });
-
-    socket.on(SOCKET_EVENTS.TASK_CANCELLED, (data: SocketEventPayloads[typeof SOCKET_EVENTS.TASK_CANCELLED]) => {
-      if (data.sessionId) {
-        log.info('TASK_CANCELLED received - removing from processingSessions', { taskId: data.taskId, sessionId: data.sessionId });
-        setProcessingSessions((prev) => {
-          const next = new Set(prev);
-          next.delete(data.sessionId!);
-          return next;
-        });
-      }
-    });
-
-    // 196-session-status-sanity: Clear processingSessions when task state becomes terminal via TASK_UPDATED
-    // This is the main mechanism for clearing - tasks update state via PATCH /api/tasks/:id
-    const TERMINAL_TASK_STATES = ['complete', 'failed', 'cancelled'];
-    socket.on(SOCKET_EVENTS.TASK_UPDATED, (data: { taskId: string; sessionId?: string; state: string }) => {
-      if (data.sessionId && TERMINAL_TASK_STATES.includes(data.state)) {
-        log.info('TASK_UPDATED with terminal state - removing from processingSessions', {
-          taskId: data.taskId,
-          sessionId: data.sessionId,
-          state: data.state,
-        });
-        setProcessingSessions((prev) => {
-          const next = new Set(prev);
-          next.delete(data.sessionId!);
-          return next;
-        });
-      }
-    });
+    // Note: Task events removed (tasks stripped from capybara-chat)
+    // processingSessions are cleared via SESSION_UPDATED instead
 
     // Note: registerPendingHandlers is called in the 'connect' handler above
     // No need to call it here - it would cause duplicate handlers

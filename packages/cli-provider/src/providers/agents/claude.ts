@@ -96,17 +96,7 @@ export const CLAUDE_BACKEND: CLIBackendConfig = {
     // This is required because --mcp-config flag is broken in CLI 2.1.29
     env.SESSION_ID = config.sessionId;
 
-    // 148-prompt-hierarchy: Pass TASK_ID for task_update_progress MCP tool
-    // This enables agents to report progress during task execution
-    if (config.taskId) {
-      env.TASK_ID = config.taskId;
-
-      // Force all subagents to run in foreground during task execution.
-      // Background subagents don't have MCP access (Claude CLI limitation),
-      // so analyzers/writers spawned via Task tool would fail to call MCP tools.
-      // Foreground subagents inherit MCP from parent → tools work.
-      env.CLAUDE_CODE_DISABLE_BACKGROUND_TASKS = '1';
-    }
+    // Note: Task execution has been removed from capybara-chat
 
     // 032-multitenancy: Pass user identity for scoped MCP API calls
     // MCP servers inherit env from the Claude CLI process

@@ -5,20 +5,16 @@ services:
       dockerfile: docker/server/Dockerfile
       target: development
     ports:
-      - "2279:2279"
+      - "3279:2279"
     volumes:
       - ../:/app
-      - /app/node_modules # Persist container node_modules if host doesn't have them, or to avoid platform mismatch? 
-      # Actually, better to use host node_modules on Linux for speed, but cleaner to use container's.
-      # If we mount ../:/app, we obscure container node_modules.
-      # If we add anonymous volume /app/node_modules, it preserves container's node_modules.
-      # But then adding a dependency on host won't reflect in container until rebuild.
-      # On Linux, host node_modules work fine usually. I'll omit the anonymous volume to allow host modules to shine through.
+      - server-data:/data
     environment:
       - NODE_ENV=development
       - DATABASE_PATH=/data/capybara-chat.db
       - PORT=2279
-    command: pnpm --filter @capybara-chat/server dev
+      - ALLOW_DEV_KEY=true
+    command: sh -c "pnpm --filter @capybara-chat/types build && pnpm --filter @capybara-chat/server dev"
     restart: unless-stopped
 
   bridge:
@@ -27,7 +23,7 @@ services:
       dockerfile: docker/bridge/Dockerfile
       target: development
     ports:
-      - "2280:2280"
+      - "3280:2280"
     volumes:
       - ../:/app
       - /var/run/docker.sock:/var/run/docker.sock
@@ -38,11 +34,12 @@ services:
         read_only: true
     environment:
       - NODE_ENV=development
-      - SERVER_URL=http://server:2279
+      - CAPYBARA_SERVER_URL=http://server:2279
+      - ALLOW_DEV_KEY=true
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
     depends_on:
       - server
-    command: pnpm --filter @capybara-chat/bridge dev
+    command: sh -c "pnpm --filter @capybara-chat/types build && pnpm --filter @capybara-chat/bridge dev"
     restart: unless-stopped
 
   ui:
@@ -51,12 +48,16 @@ services:
       dockerfile: docker/ui/Dockerfile
       target: development
     ports:
-      - "3000:3000"
+      - "3281:3000"
     volumes:
       - ../:/app
     environment:
-      - VITE_SERVER_URL=http://localhost:2279
+      - VITE_SERVER_URL=http://localhost:3279
+      - DOCKER=true
     depends_on:
       - server
-    command: pnpm --filter @capybara-chat/ui dev --port 3000
+    command: sh -c "pnpm --filter @capybara-chat/types build && pnpm --filter @capybara-chat/ui dev --host --port 3000"
     restart: unless-stopped
+
+volumes:
+  server-data:

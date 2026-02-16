@@ -115,7 +115,7 @@ export interface EntityViewProps<TEntity extends BaseEntity, TForm extends objec
   entityId: string;
   /** Server URL */
   serverUrl?: string;
-  /** API path (e.g., '/api/specs') */
+  /** API path (e.g., '/api/prompts') */
   apiPath: string;
   /** Session ID for context injection and MCP Forms sync */
   sessionId?: string;
@@ -307,8 +307,6 @@ export function EntityView<TEntity extends BaseEntity, TForm extends object>({
   // Map entity type to socket events for real-time refresh
   const entityUpdateEvents = useMemo(() => {
     switch (schema.entityType) {
-      case 'spec':
-        return [SOCKET_EVENTS.SPEC_UPDATED, SOCKET_EVENTS.SPEC_DELETED];
       case 'document':
         return [SOCKET_EVENTS.DOCUMENT_UPDATED, SOCKET_EVENTS.DOCUMENT_DELETED];
       case 'prompt':
@@ -328,11 +326,9 @@ export function EntityView<TEntity extends BaseEntity, TForm extends object>({
       // Check if this update is for our entity
       const payload = data as Record<string, unknown>;
       const updatedId =
-        payload.specId ||
         payload.documentId ||
         payload.segmentId ||
         payload.id ||
-        (payload.spec as { id?: string })?.id ||
         (payload.document as { id?: string })?.id ||
         (payload.segment as { id?: string })?.id;
 

@@ -71,13 +71,11 @@ export interface CLIMessage {
  */
 export interface CLISessionConfig {
   sessionId: string;
-  worktreePath?: string;
+  workingDirectory?: string;
   agentContext?: AgentContext;
   claudeSessionIdToResume?: string;
   /** Additional directories to add (for Claude --add-dir) */
   additionalDirs?: string[];
-  /** Task ID for background tasks (148-prompt-hierarchy: enables task_update_progress MCP tool) */
-  taskId?: string;
 }
 
 /**

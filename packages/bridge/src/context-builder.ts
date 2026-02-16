@@ -7,7 +7,7 @@
  * - Subsequent messages: Minimal prefix (~20 tokens)
  * - After compaction: Re-inject full context
  *
- * NOTE: This now uses huddle-mcp tools (spec_update, document_update, etc.)
+ * NOTE: This now uses huddle-mcp tools (prompt_update, document_update, etc.)
  * instead of form-mcp tools. The agent directly persists changes to the database,
  * and the UI receives socket events to refresh its view.
  */
@@ -28,8 +28,6 @@ interface EditingSession {
  * Schema hints for new entity creation
  */
 const ENTITY_FIELD_HINTS: Record<string, string> = {
-  spec: `Required: title, content
-Optional: priority (low/medium/high/critical), tags (array), workflowStatus (DRAFT/READY/IN_PROGRESS/IN_REVIEW/DONE)`,
   prompt: `Required: name, content
 Optional: summary, tags (array)`,
   document: `Required: name, content
@@ -42,7 +40,6 @@ Optional: systemPrompt, model (sonnet/opus/haiku/inherit), tags (array), allowed
  * Map entity types to their huddle-mcp tool names and parameter names
  */
 const ENTITY_TOOL_MAP: Record<string, { get: string; update: string; create: string; idParam: string }> = {
-  spec: { get: 'spec_get', update: 'spec_update', create: 'spec_create', idParam: 'specId' },
   prompt: { get: 'prompt_get', update: 'prompt_update', create: 'prompt_create', idParam: 'promptId' },
   document: { get: 'document_get', update: 'document_update', create: 'document_create', idParam: 'documentId' },
   agentDefinition: { get: 'agent_get', update: 'agent_update', create: 'agent_create', idParam: 'agentId' },
@@ -137,10 +134,8 @@ ${userMessage}`;
  */
 async function fetchEntity(type: string, id: string): Promise<Record<string, unknown>> {
   const pathMap: Record<string, string> = {
-    spec: 'specs',
     prompt: 'prompts',
     document: 'documents',
-    pipeline: 'pipelines',
     agentDefinition: 'agent-definitions',
   };
 
@@ -171,7 +166,7 @@ function getEntityTitle(entity: Record<string, unknown>): string {
  */
 function compactValues(entity: Record<string, unknown>): Record<string, unknown> {
   const compact: Record<string, unknown> = {};
-  const skipKeys = ['id', 'createdAt', 'updatedAt', 'sessionId', 'workspaceId'];
+  const skipKeys = ['id', 'createdAt', 'updatedAt', 'sessionId'];
 
   for (const [key, value] of Object.entries(entity)) {
     if (value === null || value === undefined || value === '') continue;

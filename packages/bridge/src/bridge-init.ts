@@ -19,16 +19,12 @@ import { ProviderType } from '@capybara-chat/types';
 import { createLogger, MODEL_DEFAULTS } from '@capybara-chat/types';
 import type { BridgeConfig, IApiClient } from './interfaces.js';
 
-import { SessionSpawner } from './spawner.js';
 import { HumanLoopHandler } from './human-loop.js';
 import { MessageHandler } from './handlers/index.js';
-import { getTaskMessageQueue } from './state/task-message-queue.js';
 import { getConcurrencyManager } from './concurrency.js';
 import { getAgentConfigManager, type AgentConfigManager } from './state/agent-config-manager.js';
 import { getSessionContextStore, type SessionContextStore } from './session/index.js';
-import type { TaskMessageQueue } from './state/task-message-queue.js';
 import type { SessionConcurrencyManager } from './concurrency.js';
-import { join } from 'path';
 
 const log = createLogger('BridgeInit');
 
@@ -37,7 +33,6 @@ const log = createLogger('BridgeInit');
  * These are singletons that can be reset for testing.
  */
 export interface BridgeStateManagers {
-  taskMessageQueue: ReturnType<typeof getTaskMessageQueue>;
   concurrency: SessionConcurrencyManager;
   agentConfigManager: AgentConfigManager;
   sessionContextStore: SessionContextStore;
@@ -45,10 +40,8 @@ export interface BridgeStateManagers {
 
 /**
  * Bridge services created by initialization.
- * All services are optional to support Docker mode (which doesn't use pool-based services).
  */
 export interface BridgeServices {
-  spawner: SessionSpawner;
   humanLoop: HumanLoopHandler;
   assistantPool: AssistantPool | null;
   messageHandler: MessageHandler | null;
@@ -80,7 +73,6 @@ export function getStateManagers(
   overrides?: Partial<BridgeStateManagers>
 ): BridgeStateManagers {
   return {
-    taskMessageQueue: overrides?.taskMessageQueue ?? getTaskMessageQueue(),
     concurrency: overrides?.concurrency ?? getConcurrencyManager(),
     agentConfigManager: overrides?.agentConfigManager ?? getAgentConfigManager(apiClient),
     sessionContextStore: overrides?.sessionContextStore ?? getSessionContextStore(),
@@ -95,25 +87,10 @@ export function createBridgeServices(deps: CreateBridgeServicesDeps): BridgeServ
   const { config, apiClient, getSocket, getAssistantPool, stateManagers: stateOverrides } = deps;
   const stateManagers = getStateManagers(apiClient, stateOverrides);
 
-  // Always create spawner and human loop (used in all modes)
-  const spawner = new SessionSpawner();
   const humanLoop = new HumanLoopHandler();
-
-  // In Docker mode, pool-based services aren't used
-  if (config.useDocker) {
-    log.info('Using Docker container spawner');
-    return {
-      spawner,
-      humanLoop,
-      assistantPool: null,
-      messageHandler: null,
-      stateManagers,
-    };
-  }
 
   // Create assistant pool (will be started separately)
   // Use injected factory if provided (for testing with mock pool)
-  // In CLI provider mode, spawn CLI directly (supports OAuth auth)
   const providerType = config.useCliProvider ? ProviderType.CLI : ProviderType.SDK;
 
   if (config.useCliProvider) {
@@ -129,29 +106,19 @@ export function createBridgeServices(deps: CreateBridgeServicesDeps): BridgeServ
     cliBackend: config.cliBackend,
   });
 
-
-
-
-
   // Create message handler with dependency injection
   const messageHandler = new MessageHandler({
     getSocket,
     getAssistantPool,
-
     concurrency: stateManagers.concurrency,
-    useDocker: config.useDocker,
   });
 
   log.info('Using AssistantPool (direct CLI integration)');
 
-
-
   return {
-    spawner,
     humanLoop,
     assistantPool,
     messageHandler,
-
     stateManagers,
   };
 }

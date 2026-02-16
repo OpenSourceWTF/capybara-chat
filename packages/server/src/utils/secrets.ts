@@ -5,8 +5,6 @@
  */
 
 import type Database from 'better-sqlite3';
-import { SECRET_NAMES } from '@capybara-chat/types';
-
 export interface TokenResult {
   token: string;
   source: 'database' | 'environment';
@@ -76,49 +74,3 @@ export function getSecret(db: Database.Database, name: string): SecretRow | null
   return secret ?? null;
 }
 
-/**
- * Get GitHub token from database or environment variable.
- */
-export function getGitHubToken(db: Database.Database): TokenResult | null {
-  const secret = db.prepare(
-    'SELECT encrypted_value FROM secrets WHERE name = ?'
-  ).get(SECRET_NAMES.GITHUB_TOKEN) as { encrypted_value: string } | undefined;
-
-  if (secret?.encrypted_value) {
-    return { token: secret.encrypted_value, source: 'database' };
-  }
-
-  if (process.env.GITHUB_TOKEN) {
-    return { token: process.env.GITHUB_TOKEN, source: 'environment' };
-  }
-
-  return null;
-}
-
-/**
- * Get GitHub OAuth token from database.
- */
-export function getGitHubOAuthToken(db: Database.Database): string | null {
-  const secret = db.prepare(
-    'SELECT encrypted_value FROM secrets WHERE name = ?'
-  ).get(SECRET_NAMES.GITHUB_OAUTH_TOKEN) as { encrypted_value: string } | undefined;
-
-  return secret?.encrypted_value ?? null;
-}
-
-/**
- * Get any available GitHub token - OAuth first, then PAT.
- */
-export function getAnyGitHubToken(db: Database.Database): TokenResult | null {
-  // Try OAuth token first
-  const oauthSecret = db.prepare(
-    'SELECT encrypted_value FROM secrets WHERE name = ?'
-  ).get(SECRET_NAMES.GITHUB_OAUTH_TOKEN) as { encrypted_value: string } | undefined;
-
-  if (oauthSecret?.encrypted_value) {
-    return { token: oauthSecret.encrypted_value, source: 'database' };
-  }
-
-  // Fall back to PAT
-  return getGitHubToken(db);
-}

@@ -12,13 +12,12 @@ import {
 
 describe('formatEntityType', () => {
   it('capitalizes first letter', () => {
-    expect(formatEntityType('spec')).toBe('Spec');
     expect(formatEntityType('prompt')).toBe('Prompt');
     expect(formatEntityType('document')).toBe('Document');
   });
 
   it('handles already capitalized', () => {
-    expect(formatEntityType('Spec')).toBe('Spec');
+    expect(formatEntityType('Prompt')).toBe('Prompt');
   });
 
   it('handles empty string', () => {
@@ -37,7 +36,6 @@ describe('compactValues', () => {
       createdAt: '2024-01-01',
       updatedAt: '2024-01-02',
       sessionId: 'sess-1',
-      workspaceId: 'ws-1',
       title: 'Keep this',
     };
     const result = compactValues(data);
@@ -45,7 +43,6 @@ describe('compactValues', () => {
     expect(result).not.toHaveProperty('createdAt');
     expect(result).not.toHaveProperty('updatedAt');
     expect(result).not.toHaveProperty('sessionId');
-    expect(result).not.toHaveProperty('workspaceId');
     expect(result).toHaveProperty('title', 'Keep this');
   });
 
@@ -104,34 +101,34 @@ describe('compactValues', () => {
 
 describe('buildContextPreview', () => {
   it('includes entity type and title', () => {
-    const result = buildContextPreview('spec', 'spec-123', 'My Spec', {});
-    expect(result).toContain('**spec**');
-    expect(result).toContain('"My Spec"');
+    const result = buildContextPreview('prompt', 'prompt-123', 'My Prompt', {});
+    expect(result).toContain('**prompt**');
+    expect(result).toContain('"My Prompt"');
   });
 
   it('includes entity ID', () => {
-    const result = buildContextPreview('spec', 'spec-123', 'Title', {});
-    expect(result).toContain('`spec-123`');
+    const result = buildContextPreview('prompt', 'prompt-123', 'Title', {});
+    expect(result).toContain('`prompt-123`');
   });
 
   it('shows "new" for undefined entity ID', () => {
-    const result = buildContextPreview('spec', undefined, 'Title', {});
+    const result = buildContextPreview('document', undefined, 'Title', {});
     expect(result).toContain('`new`');
   });
 
   it('uses "Untitled" for undefined title', () => {
-    const result = buildContextPreview('spec', 'id', undefined, {});
+    const result = buildContextPreview('prompt', 'id', undefined, {});
     expect(result).toContain('"Untitled"');
   });
 
   it('includes correct tools for known entity types', () => {
-    const specResult = buildContextPreview('spec', 'id', 'Title', {});
-    expect(specResult).toContain('`spec_get`');
-    expect(specResult).toContain('`spec_update`');
-
     const promptResult = buildContextPreview('prompt', 'id', 'Title', {});
     expect(promptResult).toContain('`prompt_get`');
     expect(promptResult).toContain('`prompt_update`');
+
+    const documentResult = buildContextPreview('document', 'id', 'Title', {});
+    expect(documentResult).toContain('`document_get`');
+    expect(documentResult).toContain('`document_update`');
   });
 
   it('uses fallback tools for unknown entity types', () => {
@@ -142,23 +139,27 @@ describe('buildContextPreview', () => {
 
   it('includes compacted form data', () => {
     const formData = { title: 'Test', description: 'Desc' };
-    const result = buildContextPreview('spec', 'id', 'Title', formData);
+    const result = buildContextPreview('prompt', 'id', 'Title', formData);
     expect(result).toContain('"title": "Test"');
     expect(result).toContain('"description": "Desc"');
   });
 
   it('handles undefined form data', () => {
-    const result = buildContextPreview('spec', 'id', 'Title', undefined);
+    const result = buildContextPreview('prompt', 'id', 'Title', undefined);
     expect(result).toContain('{}');
   });
 });
 
 describe('ENTITY_TOOL_MAP', () => {
   it('has mappings for common entity types', () => {
-    expect(ENTITY_TOOL_MAP).toHaveProperty('spec');
     expect(ENTITY_TOOL_MAP).toHaveProperty('prompt');
     expect(ENTITY_TOOL_MAP).toHaveProperty('document');
     expect(ENTITY_TOOL_MAP).toHaveProperty('agentDefinition');
+  });
+
+  it('does not have removed entity types', () => {
+    expect(ENTITY_TOOL_MAP).not.toHaveProperty('spec');
+    expect(ENTITY_TOOL_MAP).not.toHaveProperty('pipeline');
   });
 
   it('each mapping has get, update, create', () => {

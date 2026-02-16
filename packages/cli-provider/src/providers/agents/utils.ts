@@ -61,13 +61,13 @@ export function buildMcpServersConfig(
   // 032-multitenancy: Common env vars for all MCP servers
   const commonEnv: Record<string, string> = {
     SESSION_ID: sessionId,
-    CAPYBARA_SERVER_URL: process.env.CAPYBARA_SERVER_URL || 'http://localhost:2279', // Should use env var
+    CAPYBARA_SERVER_URL: process.env.CAPYBARA_SERVER_URL || 'http://localhost:3279',
     CAPYBARA_API_KEY: process.env.CAPYBARA_API_KEY || '',
     ...(userId ? { CAPYBARA_USER_ID: userId } : {}),
   };
 
   const servers: Record<string, { command: string; args: string[]; env: Record<string, string> }> = {
-    // Huddle MCP: ALWAYS included - provides spec/prompt/document management
+    // Huddle MCP: ALWAYS included - provides prompt/document/agent management
     'capybara-huddle': {
       command: 'npx',
       args: ['tsx', huddleCliPath],

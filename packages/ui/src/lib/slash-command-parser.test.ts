@@ -32,15 +32,16 @@ describe('Slash Command Parser', () => {
   describe('isEntityType', () => {
     it('returns true for valid entity types', () => {
       expect(isEntityType('prompt')).toBe(true);
-      expect(isEntityType('pipeline')).toBe(true);
-      expect(isEntityType('spec')).toBe(true);
       expect(isEntityType('document')).toBe(true);
+      expect(isEntityType('agentDefinition')).toBe(true);
     });
 
     it('returns false for invalid entity types', () => {
       expect(isEntityType('invalid')).toBe(false);
       expect(isEntityType('user')).toBe(false);
       expect(isEntityType('')).toBe(false);
+      expect(isEntityType('spec')).toBe(false);
+      expect(isEntityType('pipeline')).toBe(false);
     });
   });
 
@@ -66,33 +67,33 @@ describe('Slash Command Parser', () => {
         });
       });
 
-      it('parses /edit spec', () => {
-        const result = parseSlashCommand('/edit spec');
+      it('parses /edit prompt', () => {
+        const result = parseSlashCommand('/edit prompt');
         expect(result).toEqual({
           action: 'edit',
-          entityType: 'spec',
+          entityType: 'prompt',
           entityId: undefined,
-          raw: '/edit spec',
+          raw: '/edit prompt',
         });
       });
 
-      it('parses /edit spec:spec-123 with ID', () => {
-        const result = parseSlashCommand('/edit spec:spec-123');
+      it('parses /edit prompt:prompt-123 with ID', () => {
+        const result = parseSlashCommand('/edit prompt:prompt-123');
         expect(result).toEqual({
           action: 'edit',
-          entityType: 'spec',
-          entityId: 'spec-123',
-          raw: '/edit spec:spec-123',
+          entityType: 'prompt',
+          entityId: 'prompt-123',
+          raw: '/edit prompt:prompt-123',
         });
       });
 
-      it('parses /open pipeline', () => {
-        const result = parseSlashCommand('/open pipeline');
+      it('parses /open document', () => {
+        const result = parseSlashCommand('/open document');
         expect(result).toEqual({
           action: 'open',
-          entityType: 'pipeline',
+          entityType: 'document',
           entityId: undefined,
-          raw: '/open pipeline',
+          raw: '/open document',
         });
       });
 
@@ -112,7 +113,7 @@ describe('Slash Command Parser', () => {
       });
 
       it('normalizes /e to /edit', () => {
-        const result = parseSlashCommand('/e spec');
+        const result = parseSlashCommand('/e prompt');
         expect(result?.action).toBe('edit');
       });
 
@@ -157,14 +158,14 @@ describe('Slash Command Parser', () => {
         });
       });
 
-      it('parses /new spec with multi-word name', () => {
-        const result = parseSlashCommand('/new spec My Cool Feature Spec');
+      it('parses /new document with multi-word name', () => {
+        const result = parseSlashCommand('/new document My Cool Document');
         expect(result).toEqual({
           action: 'new',
-          entityType: 'spec',
+          entityType: 'document',
           entityId: undefined,
-          entityName: 'My Cool Feature Spec',
-          raw: '/new spec My Cool Feature Spec',
+          entityName: 'My Cool Document',
+          raw: '/new document My Cool Document',
         });
       });
 
@@ -174,15 +175,15 @@ describe('Slash Command Parser', () => {
       });
 
       it('does not set entityName for /edit commands', () => {
-        const result = parseSlashCommand('/edit spec some-name');
+        const result = parseSlashCommand('/edit prompt some-name');
         expect(result?.entityName).toBeUndefined();
       });
 
       it('handles /create alias with name', () => {
-        const result = parseSlashCommand('/create pipeline My Pipeline');
+        const result = parseSlashCommand('/create document My Document');
         expect(result?.action).toBe('new');
-        expect(result?.entityType).toBe('pipeline');
-        expect(result?.entityName).toBe('My Pipeline');
+        expect(result?.entityType).toBe('document');
+        expect(result?.entityName).toBe('My Document');
       });
     });
 
@@ -247,7 +248,6 @@ describe('Slash Command Parser', () => {
       const suggestions = getCommandSuggestions('/new p');
       expect(suggestions.every((s) => s.command.startsWith('/new p'))).toBe(true);
       expect(suggestions.some((s) => s.command === '/new prompt')).toBe(true);
-      expect(suggestions.some((s) => s.command === '/new pipeline')).toBe(true);
     });
 
     it('returns exact match first', () => {
@@ -278,7 +278,7 @@ describe('Slash Command Parser', () => {
 
     it('returns true for /edit with entity type', () => {
       expect(
-        isCommandComplete({ action: 'edit', entityType: 'spec', raw: '/edit spec' })
+        isCommandComplete({ action: 'edit', entityType: 'prompt', raw: '/edit prompt' })
       ).toBe(true);
     });
 
@@ -286,9 +286,9 @@ describe('Slash Command Parser', () => {
       expect(
         isCommandComplete({
           action: 'edit',
-          entityType: 'spec',
-          entityId: 'spec-123',
-          raw: '/edit spec:spec-123',
+          entityType: 'prompt',
+          entityId: 'prompt-123',
+          raw: '/edit prompt:prompt-123',
         })
       ).toBe(true);
     });
@@ -309,11 +309,11 @@ describe('Slash Command Parser', () => {
       expect(
         formatCommand({
           action: 'edit',
-          entityType: 'spec',
-          entityId: 'spec-123',
-          raw: '/edit spec:spec-123',
+          entityType: 'document',
+          entityId: 'doc-123',
+          raw: '/edit document:doc-123',
         })
-      ).toBe('/edit spec:spec-123');
+      ).toBe('/edit document:doc-123');
     });
   });
 
@@ -333,40 +333,40 @@ describe('Slash Command Parser', () => {
       expect(result.active).toBe(false);
     });
 
-    it('returns inactive for /edit spec without trailing space', () => {
-      const result = getEntitySelectionState('/edit spec');
+    it('returns inactive for /edit prompt without trailing space', () => {
+      const result = getEntitySelectionState('/edit prompt');
       expect(result.active).toBe(false);
     });
 
-    it('returns active for /edit spec with trailing space', () => {
-      const result = getEntitySelectionState('/edit spec ');
+    it('returns active for /edit prompt with trailing space', () => {
+      const result = getEntitySelectionState('/edit prompt ');
       expect(result.active).toBe(true);
-      expect(result.entityType).toBe('spec');
+      expect(result.entityType).toBe('prompt');
       expect(result.action).toBe('edit');
       expect(result.searchQuery).toBe('');
-      expect(result.commandPrefix).toBe('/edit spec:');
+      expect(result.commandPrefix).toBe('/edit prompt:');
     });
 
-    it('returns active for /edit spec with search query (space format)', () => {
-      const result = getEntitySelectionState('/edit spec my-spec');
+    it('returns active for /edit prompt with search query (space format)', () => {
+      const result = getEntitySelectionState('/edit prompt my-prompt');
       expect(result.active).toBe(true);
-      expect(result.entityType).toBe('spec');
-      expect(result.searchQuery).toBe('my-spec');
-      expect(result.commandPrefix).toBe('/edit spec:');
+      expect(result.entityType).toBe('prompt');
+      expect(result.searchQuery).toBe('my-prompt');
+      expect(result.commandPrefix).toBe('/edit prompt:');
     });
 
-    it('returns active for /edit spec:query (colon format)', () => {
-      const result = getEntitySelectionState('/edit spec:my-spec');
+    it('returns active for /edit prompt:query (colon format)', () => {
+      const result = getEntitySelectionState('/edit prompt:my-prompt');
       expect(result.active).toBe(true);
-      expect(result.entityType).toBe('spec');
-      expect(result.searchQuery).toBe('my-spec');
-      expect(result.commandPrefix).toBe('/edit spec:');
+      expect(result.entityType).toBe('prompt');
+      expect(result.searchQuery).toBe('my-prompt');
+      expect(result.commandPrefix).toBe('/edit prompt:');
     });
 
-    it('returns active for /edit spec: with empty query after colon', () => {
-      const result = getEntitySelectionState('/edit spec:');
+    it('returns active for /edit prompt: with empty query after colon', () => {
+      const result = getEntitySelectionState('/edit prompt:');
       expect(result.active).toBe(true);
-      expect(result.entityType).toBe('spec');
+      expect(result.entityType).toBe('prompt');
       expect(result.searchQuery).toBe('');
     });
 
@@ -390,7 +390,7 @@ describe('Slash Command Parser', () => {
     });
 
     it('handles multi-word search queries', () => {
-      const result = getEntitySelectionState('/edit spec my search query');
+      const result = getEntitySelectionState('/edit prompt my search query');
       expect(result.active).toBe(true);
       expect(result.searchQuery).toBe('my search query');
     });
@@ -398,8 +398,8 @@ describe('Slash Command Parser', () => {
 
   describe('buildCommandWithEntity', () => {
     it('builds command with entity ID', () => {
-      const result = buildCommandWithEntity('/edit spec:', 'spec-123');
-      expect(result).toBe('/edit spec:spec-123');
+      const result = buildCommandWithEntity('/edit prompt:', 'prompt-123');
+      expect(result).toBe('/edit prompt:prompt-123');
     });
 
     it('works with different entity types', () => {

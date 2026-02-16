@@ -1,8 +1,8 @@
 /**
  * Library utilities - shared filter and utility functions for library components
  *
- * Consolidates common patterns from SpecsLibrary, PromptsLibrary, DocumentsLibrary,
- * AgentDefinitionsLibrary, and TasksLibrary.
+ * Consolidates common patterns from PromptsLibrary, DocumentsLibrary,
+ * and AgentDefinitionsLibrary.
  */
 
 import type { FilterOption } from '../components/library';
@@ -19,7 +19,7 @@ interface TaggableItem {
  * Returns tags sorted by count (most common first).
  *
  * @example
- * const options = createTagFilterOptions(specs);
+ * const options = createTagFilterOptions(prompts);
  * // [{ value: 'api', label: 'api', count: 5 }, ...]
  */
 export function createTagFilterOptions<T extends TaggableItem>(
@@ -40,7 +40,7 @@ export function createTagFilterOptions<T extends TaggableItem>(
  * Checks if an item matches a text query across specified fields.
  *
  * @example
- * const matches = matchesTextQuery(spec, 'api', ['title', 'content']);
+ * const matches = matchesTextQuery(prompt, 'api', ['title', 'content']);
  */
 export function matchesTextQuery<T>(
   item: T,
@@ -59,7 +59,7 @@ export function matchesTextQuery<T>(
  * Checks if an item matches all active tag filters (AND logic).
  *
  * @example
- * const matches = matchesTagFilters(spec, new Set(['api', 'v2']));
+ * const matches = matchesTagFilters(prompt, new Set(['api', 'v2']));
  */
 export function matchesTagFilters<T extends TaggableItem>(
   item: T,

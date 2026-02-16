@@ -7,7 +7,7 @@
  * to reduce initial bundle size.
  */
 
-import { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react';
+import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import { useTheme } from './hooks/useTheme';
 import { useEntityEvents } from './hooks/useEntityEvents';
 import { notifyEntitySaved } from './lib/entity-events';
@@ -16,66 +16,52 @@ import { SocketProvider } from './context/SocketContext';
 import { useServer } from './context/ServerContext';
 import { useSocket } from './context/SocketContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
-import { LoginPage } from './components/auth/LoginPage';
 import { NavigationGuardProvider, useNavigationGuard } from './context/NavigationGuardContext';
 import { StatusIndicator } from './components/ui/StatusIndicator';
 import { LayoutModeProvider, useLayoutMode } from './context/LayoutModeContext';
 import {
   AdaptiveLayout,
   GeneralConversation,
-  WorkspaceManager,
-  SpecsLibrary,
   SessionsManager,
   PromptsLibrary,
   DocumentsLibrary,
   AgentDefinitionsLibrary,
-  TasksLibrary,
-  Dashboard,
   DevMenu,
   HelpModal,
-  SpawnTaskPanel,
   ViewFallback,
   ErrorBoundary,
 } from './components';
 
 // Lazy-loaded view components (code splitting)
 // These are only loaded when viewing a specific entity
-const SpecView = lazy(() => import('./components/views/SpecView').then(m => ({ default: m.SpecView })));
 const PromptView = lazy(() => import('./components/views/PromptView').then(m => ({ default: m.PromptView })));
 const DocumentView = lazy(() => import('./components/views/DocumentView').then(m => ({ default: m.DocumentView })));
 const AgentDefinitionView = lazy(() => import('./components/views/AgentDefinitionView').then(m => ({ default: m.AgentDefinitionView })));
 const SessionDetailView = lazy(() => import('./components/views/SessionDetailView').then(m => ({ default: m.SessionDetailView })));
-const TaskDetailView = lazy(() => import('./components/tasks/TaskDetailView').then(m => ({ default: m.TaskDetailView })));
 import { api } from './lib/api';
 import { createLogger } from './lib/logger';
 import { STORAGE_KEYS } from './constants';
 import { SessionType, API_PATHS, type FormEntityType } from '@capybara-chat/types';
-import type { Spec, PromptSegment, Document, AgentDefinition } from '@capybara-chat/types';
+import type { PromptSegment, Document, AgentDefinition } from '@capybara-chat/types';
 import type { ParsedCommand } from './lib/slash-command-parser';
 import type { EntityNewEvent, EntityEditEvent, EntityViewEvent } from './lib/entity-events';
 
 const log = createLogger('App');
 
-type Tab = 'dashboard' | 'specs' | 'prompts' | 'documents' | 'agents' | 'tasks' | 'sessions' | 'workspaces' | 'new-task';
+type Tab = 'prompts' | 'documents' | 'agents' | 'sessions';
 
 const TAB_CONFIG: { id: Tab; label: string; icon: string }[] = [
-  { id: 'dashboard', label: 'Dashboard', icon: '◉' },
-  { id: 'specs', label: 'Specs', icon: '◈' },
   { id: 'prompts', label: 'Prompts', icon: '¶' },
   { id: 'documents', label: 'Docs', icon: '📄' },
   { id: 'agents', label: 'Agents', icon: '🤖' },
-  { id: 'tasks', label: 'Tasks', icon: '⚡' },
   { id: 'sessions', label: 'Sessions', icon: '◎' },
-  { id: 'workspaces', label: 'Repos', icon: '⌂' },
 ];
 
 /** Map FormEntityType to Tab for navigation */
 const ENTITY_TYPE_TO_TAB: Record<FormEntityType, Tab> = {
-  spec: 'specs',
   prompt: 'prompts',
   document: 'documents',
   agentDefinition: 'agents',
-  pipeline: 'dashboard', // pipelines not routable yet
 };
 
 function AppContent() {
@@ -98,18 +84,14 @@ function AppContent() {
   // Help modal state
   const [showHelp, setShowHelp] = useState(false);
 
-  // Pre-selected spec when navigating to new-task from SpecView
-  const pendingSpecIdRef = useRef<string | null>(null);
-
   // Session handlers
-  const handleNewChat = useCallback((agentDefinitionId?: string, workspaceId?: string) => {
+  const handleNewChat = useCallback((agentDefinitionId?: string) => {
     safeNavigate(async () => {
-      log.info('handleNewChat called', { agentDefinitionId, workspaceId });
+      log.info('handleNewChat called', { agentDefinitionId });
       try {
         const payload = {
           type: SessionType.ASSISTANT_GENERAL,
           ...(agentDefinitionId ? { agentDefinitionId } : {}),
-          ...(workspaceId ? { workspaceId } : {}),
         };
         log.info('Creating session with payload', { payload });
         const res = await api.post(`${serverUrl}${API_PATHS.SESSIONS}`, payload);
@@ -205,12 +187,6 @@ function AppContent() {
     });
   }, [navigateToTab, safeNavigate]);
 
-  const handleSpecSelect = useCallback((spec: Spec) => {
-    safeNavigate(() => {
-      navigateToEntity('specs', spec.id);
-    });
-  }, [navigateToEntity, safeNavigate]);
-
   const handlePromptSelect = useCallback((prompt: PromptSegment) => {
     safeNavigate(() => {
       navigateToEntity('prompts', prompt.id);
@@ -259,13 +235,6 @@ function AppContent() {
       return;
     }
 
-    if (command.action === 'spawn') {
-      safeNavigate(() => {
-        navigateToTab('new-task');
-      });
-      return;
-    }
-
     if (!command.entityType) return;
 
     safeNavigate(() => {
@@ -278,7 +247,7 @@ function AppContent() {
         }
       }
     });
-  }, [navigateToEntity, navigateToTab, safeNavigate]);
+  }, [navigateToEntity, safeNavigate]);
 
   // Handle entity save — notify listeners (EntityView handles its own mode switch)
   const handleEntitySaved = useCallback((entityType: FormEntityType, entity: unknown) => {
@@ -314,49 +283,6 @@ function AppContent() {
   // Render content pane based on active tab and entity state
   const renderContentPane = () => {
     switch (activeTab) {
-      case 'dashboard':
-        return (
-          <Dashboard
-            onTaskSelect={(task) => {
-              safeNavigate(() => {
-                navigateToEntity('tasks', task.id);
-              });
-            }}
-          />
-        );
-
-      case 'specs':
-        return entityId ? (
-          <Suspense fallback={<ViewFallback message="Loading spec..." />}>
-            <SpecView
-              specId={entityId === 'new' ? '' : entityId}
-              serverUrl={serverUrl}
-              sessionId={currentSessionId || undefined}
-              initialMode={initialMode}
-              onBack={handleBack}
-              onSave={(entity) => handleEntitySaved('spec', entity)}
-              onTaskSelect={(task) => {
-                safeNavigate(() => {
-                  navigateToEntity('tasks', task.id);
-                });
-              }}
-              onSessionSelect={(session) => {
-                safeNavigate(() => {
-                  navigateToEntity('sessions', session.id);
-                });
-              }}
-              onCreateTask={() => {
-                safeNavigate(() => {
-                  pendingSpecIdRef.current = entityId === 'new' ? null : entityId;
-                  navigateToTab('new-task');
-                });
-              }}
-            />
-          </Suspense>
-        ) : (
-          <SpecsLibrary onSpecSelect={handleSpecSelect} />
-        );
-
       case 'prompts':
         return entityId ? (
           <Suspense fallback={<ViewFallback message="Loading prompt..." />}>
@@ -406,39 +332,6 @@ function AppContent() {
           <AgentDefinitionsLibrary onAgentSelect={handleAgentSelect} />
         );
 
-      case 'tasks':
-        return entityId ? (
-          <Suspense fallback={<ViewFallback message="Loading task..." />}>
-            <TaskDetailView
-              taskId={entityId}
-              serverUrl={serverUrl}
-              onBack={handleBack}
-              onViewSession={(sessionId) => {
-                safeNavigate(() => {
-                  navigateToEntity('sessions', sessionId);
-                });
-              }}
-              onOpenSessionInPane={(sessionId) => {
-                handleSessionSelect(sessionId);
-              }}
-              onViewSpec={(specId) => {
-                safeNavigate(() => {
-                  navigateToEntity('specs', specId);
-                });
-              }}
-            />
-          </Suspense>
-        ) : (
-          <TasksLibrary
-            onNewTask={() => navigateToTab('new-task')}
-            onSelectTask={(task) => {
-              safeNavigate(() => {
-                navigateToEntity('tasks', task.id);
-              });
-            }}
-          />
-        );
-
       case 'sessions':
         return entityId ? (
           <Suspense fallback={<ViewFallback message="Loading session..." />}>
@@ -449,10 +342,8 @@ function AppContent() {
               onEntityNavigate={(entityType, id) => {
                 // Map session entity types to tabs
                 const tabMap: Record<string, Tab> = {
-                  spec: 'specs',
                   document: 'documents',
                   prompt: 'prompts',
-                  pipeline: 'dashboard',
                   agent_definition: 'agents',
                 };
                 const tab = tabMap[entityType];
@@ -473,24 +364,6 @@ function AppContent() {
             }}
           />
         );
-
-      case 'workspaces':
-        return <WorkspaceManager />;
-
-      case 'new-task': {
-        const specId = pendingSpecIdRef.current;
-        pendingSpecIdRef.current = null;
-        return (
-          <SpawnTaskPanel
-            initialSpecId={specId || undefined}
-            onBack={() => navigateToTab('tasks')}
-            onTaskCreated={(task) => {
-              log.info('Task created, navigating to tasks', { taskId: task.id });
-              navigateToTab('tasks');
-            }}
-          />
-        );
-      }
 
       default:
         return null;
@@ -536,12 +409,12 @@ function AppContent() {
               {user.avatarUrl ? (
                 <img
                   src={user.avatarUrl}
-                  alt={user.githubLogin}
+                  alt={user.username}
                   className="w-5 h-5 border border-border/40"
                   style={{ borderRadius: 0 }}
                 />
               ) : (
-                <span className="text-xs text-muted-foreground font-mono">@{user.githubLogin}</span>
+                <span className="text-xs text-muted-foreground font-mono">@{user.username}</span>
               )}
               <button
                 onClick={logout}
@@ -586,8 +459,7 @@ function AppContent() {
                 navigateToEntity('sessions', sid);
               });
             }}
-            onNewChat={(agentDefinitionId, workspaceId) => handleNewChat(agentDefinitionId, workspaceId)}
-            onNewTask={() => navigateToTab('new-task')}
+            onNewChat={(agentDefinitionId) => handleNewChat(agentDefinitionId)}
             onSessionSelect={handleSessionSelect}
             onSessionDelete={handleSessionDelete}
           />
@@ -647,9 +519,18 @@ function AuthGate() {
     );
   }
 
-  // Not authenticated → login page
+  // Not authenticated — show a fallback (standalone auto-login should handle this)
   if (!user) {
-    return <LoginPage />;
+    return (
+      <div
+        className="min-h-screen flex items-center justify-center"
+        style={{ background: 'var(--background)' }}
+      >
+        <span className="text-sm font-mono" style={{ color: 'var(--muted-foreground)' }}>
+          connecting...
+        </span>
+      </div>
+    );
   }
 
   // Authenticated → full app with socket connected using JWT

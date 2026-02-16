@@ -18,9 +18,9 @@ import { SERVER_DEFAULTS } from './index.js';
 // ===== Configuration Types =====
 
 export interface ApiConfig {
-  /** Server URL (e.g., http://localhost:2279) */
+  /** Server URL (e.g., http://localhost:3279) */
   serverUrl: string;
-  /** Bridge URL (e.g., http://localhost:2280) */
+  /** Bridge URL (e.g., http://localhost:3280) */
   bridgeUrl: string;
   /** API key for authentication (if configured) */
   apiKey?: string;
@@ -54,8 +54,8 @@ let cachedConfig: ApiConfig | null = null;
  * Configuration is computed once and cached.
  *
  * Environment variables:
- * - CAPYBARA_SERVER_URL: Server URL (default: http://localhost:2279)
- * - CAPYBARA_BRIDGE_URL: Bridge URL (default: http://localhost:2280)
+ * - CAPYBARA_SERVER_URL: Server URL (default: http://localhost:3279)
+ * - CAPYBARA_BRIDGE_URL: Bridge URL (default: http://localhost:3280)
  * - CAPYBARA_API_KEY: API key for authentication
  * - ALLOW_DEV_KEY: Set to 'true' to allow 'dev-key' as fallback API key
  */

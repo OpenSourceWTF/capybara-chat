@@ -100,7 +100,7 @@ interface TestForm {
 }
 
 const testSchema: EntitySchemaDefinition<TestEntity, TestForm> = {
-  entityType: 'spec',
+  entityType: 'prompt',
   defaultValues: {
     title: '',
     content: '',

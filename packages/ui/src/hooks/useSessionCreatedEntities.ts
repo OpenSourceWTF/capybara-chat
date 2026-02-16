@@ -1,7 +1,7 @@
 /**
  * useSessionCreatedEntities - Hook for fetching all entities created by a session
  *
- * Returns specs, documents, prompts, pipelines, and agent definitions
+ * Returns documents, prompts, and agent definitions
  * that originated from a specific chat session.
  */
 
@@ -14,7 +14,7 @@ import { SOCKET_EVENTS } from '@capybara-chat/types';
 /**
  * Entity types that can be created during a session
  */
-export type SessionEntityType = 'spec' | 'document' | 'prompt' | 'pipeline' | 'agent_definition';
+export type SessionEntityType = 'document' | 'prompt' | 'agent_definition';
 
 /**
  * A created entity with normalized fields
@@ -32,10 +32,8 @@ export interface SessionCreatedEntity {
  * Entity counts by type
  */
 export interface SessionEntityCounts {
-  specs: number;
   documents: number;
   prompts: number;
-  pipelines: number;
   agentDefinitions: number;
 }
 
@@ -71,10 +69,8 @@ export function useSessionCreatedEntities(
     error: null,
     total: 0,
     counts: {
-      specs: 0,
       documents: 0,
       prompts: 0,
-      pipelines: 0,
       agentDefinitions: 0,
     },
   });
@@ -137,14 +133,11 @@ export function useSessionCreatedEntities(
     };
 
     // Subscribe to relevant creation events
-    // Note: PIPELINE_CREATED event doesn't exist yet - pipelines will appear on refetch
-    on(SOCKET_EVENTS.SPEC_CREATED, handleEntityCreated);
     on(SOCKET_EVENTS.DOCUMENT_CREATED, handleEntityCreated);
     on(SOCKET_EVENTS.PROMPT_CREATED, handleEntityCreated);
     on(SOCKET_EVENTS.AGENT_DEFINITION_CREATED, handleEntityCreated);
 
     return () => {
-      off(SOCKET_EVENTS.SPEC_CREATED, handleEntityCreated);
       off(SOCKET_EVENTS.DOCUMENT_CREATED, handleEntityCreated);
       off(SOCKET_EVENTS.PROMPT_CREATED, handleEntityCreated);
       off(SOCKET_EVENTS.AGENT_DEFINITION_CREATED, handleEntityCreated);

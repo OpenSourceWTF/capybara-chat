@@ -16,9 +16,6 @@ export const CONFIG = {
   API_KEY: process.env.CAPYBARA_API_KEY,
   ALLOW_DEV_KEY: process.env.ALLOW_DEV_KEY === 'true',
   JWT_SECRET: process.env.JWT_SECRET || 'dev-jwt-secret',
-  ADMIN_GITHUB_ID: process.env.ADMIN_GITHUB_ID,
-  ADMIN_GITHUB_LOGIN: process.env.ADMIN_GITHUB_LOGIN,
-
   // CORS
   CORS: {
     ORIGIN: process.env.CORS_ALLOWED_ORIGINS

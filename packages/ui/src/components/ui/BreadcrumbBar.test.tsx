@@ -28,8 +28,8 @@ interface BreadcrumbItem {
 describe('BreadcrumbBar', () => {
   const defaultItems: BreadcrumbItem[] = [
     { label: 'Home', href: '/' },
-    { label: 'Specs', href: '/specs' },
-    { label: 'Current Spec' }, // No href = current
+    { label: 'Prompts', href: '/prompts' },
+    { label: 'Current Prompt' }, // No href = current
   ];
 
   describe('rendering', () => {
@@ -37,8 +37,8 @@ describe('BreadcrumbBar', () => {
       render(<BreadcrumbBar items={defaultItems} />);
 
       expect(screen.getByText('Home')).toBeInTheDocument();
-      expect(screen.getByText('Specs')).toBeInTheDocument();
-      expect(screen.getByText('Current Spec')).toBeInTheDocument();
+      expect(screen.getByText('Prompts')).toBeInTheDocument();
+      expect(screen.getByText('Current Prompt')).toBeInTheDocument();
     });
 
     it('should render "/" separators between items', () => {
@@ -62,16 +62,16 @@ describe('BreadcrumbBar', () => {
       // Current item (last one without href) should be bracketed
       const nav = screen.getByRole('navigation');
       expect(nav.textContent).toContain('[');
-      expect(nav.textContent).toContain('Current Spec');
+      expect(nav.textContent).toContain('Current Prompt');
       expect(nav.textContent).toContain(']');
     });
 
     it('should not render brackets around non-current items', () => {
       render(<BreadcrumbBar items={defaultItems} />);
 
-      // "Home" and "Specs" should not be bracketed
+      // "Home" and "Prompts" should not be bracketed
       const homeLink = screen.getByRole('link', { name: 'Home' });
-      const specsLink = screen.getByRole('link', { name: 'Specs' });
+      const specsLink = screen.getByRole('link', { name: 'Prompts' });
 
       // Links should not contain brackets in their text
       expect(homeLink.textContent).not.toContain('[');
@@ -114,7 +114,7 @@ describe('BreadcrumbBar', () => {
     it('should mark current item with aria-current="page"', () => {
       render(<BreadcrumbBar items={defaultItems} />);
 
-      const currentItem = screen.getByText('Current Spec');
+      const currentItem = screen.getByText('Current Prompt');
       expect(currentItem).toHaveAttribute('aria-current', 'page');
     });
 
@@ -122,7 +122,7 @@ describe('BreadcrumbBar', () => {
       render(<BreadcrumbBar items={defaultItems} />);
 
       const homeLink = screen.getByRole('link', { name: 'Home' });
-      const specsLink = screen.getByRole('link', { name: 'Specs' });
+      const specsLink = screen.getByRole('link', { name: 'Prompts' });
 
       expect(homeLink).not.toHaveAttribute('aria-current');
       expect(specsLink).not.toHaveAttribute('aria-current');
@@ -152,8 +152,8 @@ describe('BreadcrumbBar', () => {
 
       const items: BreadcrumbItem[] = [
         { label: 'Home', onClick: handleHomeClick },
-        { label: 'Specs', href: '/specs' },
-        { label: 'Current Spec' },
+        { label: 'Prompts', href: '/prompts' },
+        { label: 'Current Prompt' },
       ];
 
       render(<BreadcrumbBar items={items} />);
@@ -169,15 +169,15 @@ describe('BreadcrumbBar', () => {
       const homeLink = screen.getByRole('link', { name: 'Home' });
       expect(homeLink).toHaveAttribute('href', '/');
 
-      const specsLink = screen.getByRole('link', { name: 'Specs' });
-      expect(specsLink).toHaveAttribute('href', '/specs');
+      const specsLink = screen.getByRole('link', { name: 'Prompts' });
+      expect(specsLink).toHaveAttribute('href', '/prompts');
     });
 
     it('should not be clickable when item is current (no href/onClick)', () => {
       // Current item has no href - clicking should do nothing
       render(<BreadcrumbBar items={defaultItems} />);
 
-      const currentItem = screen.getByText('Current Spec');
+      const currentItem = screen.getByText('Current Prompt');
 
       // Current item should be a span, not a link or button
       expect(currentItem.tagName).not.toBe('A');
@@ -188,7 +188,7 @@ describe('BreadcrumbBar', () => {
       render(<BreadcrumbBar items={defaultItems} />);
 
       expect(screen.getByRole('link', { name: 'Home' })).toBeInTheDocument();
-      expect(screen.getByRole('link', { name: 'Specs' })).toBeInTheDocument();
+      expect(screen.getByRole('link', { name: 'Prompts' })).toBeInTheDocument();
     });
 
     it('should render buttons for items with onClick but no href', async () => {
@@ -228,7 +228,7 @@ describe('BreadcrumbBar', () => {
     it('should have primary/foreground color for current item', () => {
       render(<BreadcrumbBar items={defaultItems} />);
 
-      const currentItem = screen.getByText('Current Spec');
+      const currentItem = screen.getByText('Current Prompt');
       expect(currentItem).toHaveClass('text-foreground');
     });
 
@@ -313,7 +313,7 @@ describe('BreadcrumbBar', () => {
       expect(screen.getByRole('link', { name: 'Home' })).toHaveFocus();
 
       await user.tab();
-      expect(screen.getByRole('link', { name: 'Specs' })).toHaveFocus();
+      expect(screen.getByRole('link', { name: 'Prompts' })).toHaveFocus();
     });
 
     it('should skip current item in tab order', async () => {
@@ -326,7 +326,7 @@ describe('BreadcrumbBar', () => {
       await user.tab();
 
       // Current item should not be focused (it's not interactive)
-      const currentItem = screen.getByText('Current Spec');
+      const currentItem = screen.getByText('Current Prompt');
       expect(currentItem).not.toHaveFocus();
     });
 

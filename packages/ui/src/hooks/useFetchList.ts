@@ -51,7 +51,7 @@ function deepEqual(a: unknown, b: unknown): boolean {
 export interface FetchListOptions {
   /** Base URL for the API endpoint */
   url: string;
-  /** Key to extract from response (e.g., 'sessions', 'specs', 'segments') */
+  /** Key to extract from response (e.g., 'sessions', 'documents', 'segments') */
   dataKey: string;
   /** URL params to include */
   params?: Record<string, string | undefined>;

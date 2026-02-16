@@ -7,7 +7,7 @@ import Database from 'better-sqlite3';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { existsSync, mkdirSync, readFileSync } from 'fs';
-import { createLogger, generateUserId, now } from '@capybara-chat/types';
+import { createLogger } from '@capybara-chat/types';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const log = createLogger('DB');
@@ -25,28 +25,6 @@ function runMigrations(db: Database.Database): void {
   if (hasStatusColumn.count === 0) {
     log.info('Running migration: adding status column to chat_messages');
     db.exec(`ALTER TABLE chat_messages ADD COLUMN status TEXT NOT NULL DEFAULT 'sent'`);
-  }
-
-  // Pre-seed admin user from env vars
-  const adminGithubLogin = process.env.ADMIN_GITHUB_LOGIN;
-  const adminGithubId = process.env.ADMIN_GITHUB_ID;
-  if (adminGithubLogin && adminGithubId) {
-    const existingAdmin = db.prepare(
-      'SELECT id, role FROM users WHERE github_id = ?'
-    ).get(parseInt(adminGithubId, 10)) as { id: string; role: string } | undefined;
-
-    if (!existingAdmin) {
-      const timestamp = now();
-      const adminId = generateUserId();
-      db.prepare(`
-        INSERT INTO users (id, github_id, github_login, role, created_at, updated_at)
-        VALUES (?, ?, ?, 'admin', ?, ?)
-      `).run(adminId, parseInt(adminGithubId, 10), adminGithubLogin, timestamp, timestamp);
-      log.info('Pre-seeded admin user from env', { login: adminGithubLogin, id: adminId });
-    } else if (existingAdmin.role !== 'admin') {
-      db.prepare(`UPDATE users SET role = 'admin' WHERE id = ?`).run(existingAdmin.id);
-      log.info('Promoted existing user to admin based on env', { login: adminGithubLogin, id: existingAdmin.id });
-    }
   }
 }
 

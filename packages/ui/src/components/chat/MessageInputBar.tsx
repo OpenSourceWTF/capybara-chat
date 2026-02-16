@@ -15,7 +15,7 @@
  */
 
 import { useState, useRef, useCallback, useMemo, useEffect, KeyboardEvent, ChangeEvent, ReactNode } from 'react';
-import { Send, Plus, Square, FileText, MessageSquare, Bot, Zap, CornerDownLeft, Command } from 'lucide-react';
+import { Send, Plus, Square, FileText, MessageSquare, Bot, CornerDownLeft, Command } from 'lucide-react';
 import { EntityAutocomplete } from '../entity/EntityAutocomplete';
 import { CommandAutocomplete } from './CommandAutocomplete';
 import { useEntitySearch, type EntitySearchResult } from '../../hooks/useEntitySearch';
@@ -46,8 +46,6 @@ interface MessageInputBarProps {
   contextActions?: InputContextAction[];
   /** Handler for new chat creation (opens modal) */
   onNewChat?: () => void;
-  /** Handler for new task creation */
-  onNewTask?: () => void;
   /** Whether the session is currently processing a response */
   isProcessing?: boolean;
   /** Handler for stopping the current generation */
@@ -61,7 +59,6 @@ export function MessageInputBar({
   placeholder = 'Type your message... (/ for commands)',
   contextActions,
   onNewChat,
-  onNewTask,
   isProcessing = false,
   onStop,
 }: MessageInputBarProps) {
@@ -291,7 +288,7 @@ export function MessageInputBar({
 
   // Build menu items: built-in actions + context-sensitive extras + entity creation
   // 195-ui-usability-pass: Include onSlashCommand for Create section
-  const hasMenuItems = !!(onNewChat || onNewTask || onSlashCommand || (contextActions && contextActions.length > 0));
+  const hasMenuItems = !!(onNewChat || onSlashCommand || (contextActions && contextActions.length > 0));
 
   const hasInput = input.trim().length > 0;
 
@@ -361,37 +358,13 @@ export function MessageInputBar({
                       </>
                     )}
 
-                    {/* Tasks section */}
-                    {onNewTask && (
+                    {/* Create entities section */}
+                    {onSlashCommand && (
                       <>
                         {onNewChat && <div className="border-t border-border/20 my-0.5" />}
                         <div className="px-3 py-1.5 text-2xs text-muted-foreground/40 uppercase tracking-widest border-b border-border/30">
-                          Tasks
-                        </div>
-                        <button
-                          onClick={() => { setComposeMenuOpen(false); onNewTask(); }}
-                          className="compose-menu-item"
-                        >
-                          <Zap className="w-3.5 h-3.5 opacity-50" />
-                          <span>SPAWN_TASK</span>
-                        </button>
-                      </>
-                    )}
-
-                    {/* Create entities section - 195-ui-usability-pass */}
-                    {onSlashCommand && (
-                      <>
-                        {(onNewChat || onNewTask) && <div className="border-t border-border/20 my-0.5" />}
-                        <div className="px-3 py-1.5 text-2xs text-muted-foreground/40 uppercase tracking-widest border-b border-border/30">
                           Create
                         </div>
-                        <button
-                          onClick={() => { setComposeMenuOpen(false); onSlashCommand({ action: 'new', entityType: 'spec', raw: '/new spec' }); }}
-                          className="compose-menu-item"
-                        >
-                          <FileText className="w-3.5 h-3.5 opacity-50" />
-                          <span>NEW_SPEC</span>
-                        </button>
                         <button
                           onClick={() => { setComposeMenuOpen(false); onSlashCommand({ action: 'new', entityType: 'prompt', raw: '/new prompt' }); }}
                           className="compose-menu-item"

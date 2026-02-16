@@ -4,7 +4,7 @@
  * Three modes:
  * - NORMAL: Standard 3-pane layout (lists, browsing)
  * - FOCUS: Expanded right pane for editing (forms, editors)
- * - IMMERSIVE: Full-screen content (pipeline editor)
+ * - IMMERSIVE: Full-screen content (full-screen editors)
  */
 
 import { createContext, useContext, useState, useCallback, type ReactNode } from 'react';

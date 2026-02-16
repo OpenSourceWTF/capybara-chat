@@ -46,12 +46,5 @@ export { useModal } from './useModal';
 export { useTheme } from './useTheme';
 export { useCollapsiblePane } from './useCollapsiblePane';
 
-// Domain-specific hooks
-export * from './useWorkspace';
-export { useTasks } from './useTasks';
-export { useTaskPR, type PRStatus, type UseTaskPROptions, type UseTaskPRResult, type CreatePRInput, type MergePRInput, type ClosePRInput } from './useTaskPR';
-export { useTechniques } from './useTechniques';
-export { useLogsQuery } from './useLogsQuery';
-
 // Library hooks
 export { useLibraryData, type UseLibraryDataResult } from './useLibraryData';

@@ -25,7 +25,7 @@ export interface UseFetchOptions {
  * Hook for fetching data from an API endpoint
  *
  * @example
- * const { data, loading, error, refetch } = useFetch<Workspace[]>('/api/workspaces');
+ * const { data, loading, error, refetch } = useFetch<Document[]>('/api/documents');
  */
 export function useFetch<T>(
   url: string,
@@ -70,7 +70,7 @@ export function useFetch<T>(
  * Hook for lazy fetching (manually triggered)
  *
  * @example
- * const { data, loading, error, fetch } = useLazyFetch<Workspace>('/api/workspaces');
+ * const { data, loading, error, fetch } = useLazyFetch<Document>('/api/documents');
  * // Later: fetch()
  */
 export function useLazyFetch<T>(url: string): FetchState<T> & {

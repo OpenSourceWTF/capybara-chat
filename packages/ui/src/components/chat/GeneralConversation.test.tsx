@@ -77,23 +77,6 @@ vi.mock('../../hooks/useChatPreferences', () => ({
   })),
 }));
 
-// Mock useCancellableTasks
-vi.mock('../../hooks/useCancellableTasks', () => ({
-  useCancellableTasks: vi.fn(() => ({
-    tasks: [],
-  })),
-}));
-
-// Mock useTaskCancellation
-vi.mock('../../hooks/useTaskCancellation', () => ({
-  useTaskCancellation: vi.fn(() => ({
-    cancelTasks: vi.fn(),
-    isCancelling: false,
-    error: null,
-    failedTasks: [],
-  })),
-}));
-
 // STABLE timeline reference
 const STABLE_EMPTY_TIMELINE: never[] = [];
 

@@ -6,8 +6,6 @@
 
 import type {
   Session,
-  Agent,
-  Workspace,
   ChatMessage,
 } from './index.js';
 
@@ -91,39 +89,6 @@ export function isSession(obj: unknown): obj is Session {
     hasStringProperty(obj, 'status') &&
     hasNumberProperty(obj, 'startedAt') &&
     hasNumberProperty(obj, 'lastActivityAt')
-  );
-}
-
-/**
- * Type guard for Agent
- */
-export function isAgent(obj: unknown): obj is Agent {
-  if (!isRecord(obj)) return false;
-  return (
-    hasStringProperty(obj, 'id') &&
-    hasStringProperty(obj, 'name') &&
-    hasStringProperty(obj, 'status') &&
-    hasNumberProperty(obj, 'iconSeed') &&
-    hasNumberProperty(obj, 'lastSeenAt') &&
-    hasNumberProperty(obj, 'createdAt')
-  );
-}
-
-/**
- * Type guard for Workspace
- */
-export function isWorkspace(obj: unknown): obj is Workspace {
-  if (!isRecord(obj)) return false;
-  return (
-    hasStringProperty(obj, 'id') &&
-    hasStringProperty(obj, 'name') &&
-    hasStringProperty(obj, 'repoUrl') &&
-    hasStringProperty(obj, 'repoOwner') &&
-    hasStringProperty(obj, 'repoName') &&
-    hasStringProperty(obj, 'defaultBranch') &&
-    hasStringProperty(obj, 'localPath') &&
-    hasStringProperty(obj, 'worktreesPath') &&
-    hasNumberProperty(obj, 'createdAt')
   );
 }
 

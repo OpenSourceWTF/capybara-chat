@@ -15,26 +15,14 @@ import { SERVER_DEFAULTS, MODEL_DEFAULTS } from '@capybara-chat/types';
 import type { BridgeConfig } from './interfaces.js';
 
 // ============================================================================
-// E2 fix: Centralized timing constants
+// Centralized timing constants
 // All magic numbers in one place for easy tuning and testing
 // ============================================================================
 
 /** Stream timeout for interactive sessions (10 minutes) */
 export const STREAM_TIMEOUT_MS_SESSION = 10 * 60 * 1000;
 
-/** Stream timeout for background tasks (15 minutes - longer for complex work) */
-export const STREAM_TIMEOUT_MS_TASK = 15 * 60 * 1000;
-
-/**
- * Absolute maximum execution time for a task (60 minutes).
- * 157-stalled-task: Unlike the idle timeout (which resets on stream activity),
- * this is a hard ceiling that cannot be extended. Catches scenarios where a
- * subagent is hung but keeps emitting tool_progress events, preventing the
- * idle timeout from ever firing.
- */
-export const MAX_TASK_EXECUTION_MS = 60 * 60 * 1000;
-
-/** Interval for workspace scanning/heartbeat (30 seconds) */
+/** Interval for heartbeat (30 seconds) */
 export const HEARTBEAT_INTERVAL_MS = 30_000;
 
 /** Human input request timeout (30 minutes - humans need time) */
@@ -48,12 +36,6 @@ export const COMPACTION_CHECK_INTERVAL = 5;
 
 /** Character threshold to consider auto-documenting a response */
 export const AUTO_DOCUMENT_THRESHOLD = 3000;
-
-/** Git operation timeout (2 minutes) */
-export const GIT_OPERATION_TIMEOUT_MS = 120_000;
-
-/** Token request timeout for git auth (10 seconds) */
-export const TOKEN_REQUEST_TIMEOUT_MS = 10_000;
 
 // ============================================
 // SUBAGENT HANG PREVENTION CONFIGURATION
@@ -132,6 +114,7 @@ export const ENABLE_CIRCUIT_BREAKER =
  * @param env - Environment object (defaults to process.env)
  * @returns Parsed configuration
  */
+
 /**
  * Valid CLI backend values for CLI provider mode.
  */
@@ -152,8 +135,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): BridgeConfig {
     serverUrl: env.CAPYBARA_SERVER_URL || SERVER_DEFAULTS.SERVER_URL,
     bridgePort: Number(env.BRIDGE_PORT) || SERVER_DEFAULTS.BRIDGE_PORT,
     apiKey: env.CAPYBARA_API_KEY || (env.ALLOW_DEV_KEY === 'true' ? 'dev-key' : undefined),
-    useDocker: env.USE_DOCKER === 'true',
-    enableTaskExecutor: env.ENABLE_TASK_EXECUTOR !== 'false',
     model: env.MODEL || MODEL_DEFAULTS.CLAUDE_SONNET,
     allowDevKey: env.ALLOW_DEV_KEY === 'true',
     useCliProvider: env.USE_CLI_PROVIDER !== 'false', // CLI provider is default
@@ -167,11 +148,9 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): BridgeConfig {
  */
 export function createTestConfig(overrides: Partial<BridgeConfig> = {}): BridgeConfig {
   return {
-    serverUrl: 'http://localhost:2279',
-    bridgePort: 2280,
+    serverUrl: 'http://localhost:3279',
+    bridgePort: 3280,
     apiKey: 'test-api-key',
-    useDocker: false,
-    enableTaskExecutor: false,
     model: MODEL_DEFAULTS.CLAUDE_SONNET,
     allowDevKey: true,
     useCliProvider: true, // CLI provider is default
@@ -278,10 +257,6 @@ export function validateConfig(
     warnings.push('No API key configured - requests may fail authentication');
   }
 
-  if (config.useDocker && config.enableTaskExecutor) {
-    warnings.push('Task executor may not work correctly in Docker mode');
-  }
-
   if (config.useCliProvider) {
     const backend = config.cliBackend || 'claude';
     warnings.push(`CLI provider mode enabled using ${backend} CLI`);
@@ -308,12 +283,8 @@ export function validateConfig(
           hint = `Set ${envVarList}`;
         }
 
-        if (config.useDocker) {
-          errors.push(`Missing credentials for ${backend} CLI in Docker. ${hint}`);
-        } else {
-          const loginHint = oauthPath ? 'Run CLI login' : `Set ${envVarList}`;
-          warnings.push(`No credentials found for ${backend} CLI. ${loginHint}.`);
-        }
+        const loginHint = oauthPath ? 'Run CLI login' : `Set ${envVarList}`;
+        warnings.push(`No credentials found for ${backend} CLI. ${loginHint}.`);
       }
     }
   }
@@ -322,63 +293,5 @@ export function validateConfig(
     valid: errors.length === 0,
     warnings,
     errors,
-  };
-}
-
-// ============================================================================
-// Task Executor Configuration (Phase 2.1)
-// ============================================================================
-
-/**
- * Task executor configuration interface
- */
-export interface TaskExecutorConfig {
-  /** Maximum concurrent tasks (default: 4) */
-  maxConcurrentTasks: number;
-  /** Poll interval in ms (default: 5000) */
-  pollIntervalMs: number;
-  /** Auto-create PR on completion (default: true) - set to false to skip PR creation */
-  autoCreatePr: boolean;
-  /** Executor ID for task claiming (default: bridge-executor-{pid}) */
-  executorId: string;
-  /**
-   * Use TaskPipeline architecture (199-2.2)
-   * When true, uses stage-based pipeline matching MessagePipeline.
-   * When false, uses legacy monolithic executeTask.
-   * Default: false (opt-in during rollout)
-   */
-  useTaskPipeline: boolean;
-}
-
-/**
- * Load task executor configuration from environment variables.
- *
- * @param env - Environment object (defaults to process.env)
- * @returns Parsed task executor configuration
- */
-export function loadTaskExecutorConfig(env: NodeJS.ProcessEnv = process.env): TaskExecutorConfig {
-  return {
-    maxConcurrentTasks: parseInt(env.MAX_CONCURRENT_TASKS || '4', 10),
-    pollIntervalMs: parseInt(env.TASK_POLL_INTERVAL_MS || '5000', 10),
-    // 151-task-pr-state-bug: Default to true so tasks enter WAITING_FOR_PR state
-    // Set AUTO_CREATE_PR=false to skip PR creation and go directly to COMPLETE
-    autoCreatePr: env.AUTO_CREATE_PR !== 'false',
-    executorId: env.EXECUTOR_ID || `bridge-executor-${process.pid}`,
-    // 199-2.2: TaskPipeline feature flag - opt-in during rollout
-    useTaskPipeline: env.USE_TASK_PIPELINE === 'true',
-  };
-}
-
-/**
- * Create a test task executor configuration with sensible defaults.
- */
-export function createTestTaskExecutorConfig(overrides: Partial<TaskExecutorConfig> = {}): TaskExecutorConfig {
-  return {
-    maxConcurrentTasks: 2,
-    pollIntervalMs: 100, // Fast polling for tests
-    autoCreatePr: false,
-    executorId: 'test-executor',
-    useTaskPipeline: true, // Enable TaskPipeline by default in tests
-    ...overrides,
   };
 }

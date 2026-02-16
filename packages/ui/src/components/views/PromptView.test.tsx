@@ -53,7 +53,7 @@ vi.mock('../../hooks/useEntityForm', () => ({
       content: '# Test Content',
       summary: 'A test prompt',
       tags: 'test',
-      outputType: PromptOutputType.SPEC,
+      outputType: PromptOutputType.DOCUMENT,
     },
     setField: vi.fn(),
     hasChanges: false,
@@ -76,7 +76,7 @@ const mockPrompt = {
   tags: ['test', 'prompt'],
   variables: ['variable', 'another'],
   color: '#ff6b6b',
-  outputType: PromptOutputType.SPEC,
+  outputType: PromptOutputType.DOCUMENT,
   status: EntityStatus.PUBLISHED,
   createdAt: Date.now(),
   updatedAt: Date.now(),
@@ -131,7 +131,7 @@ describe('PromptView', () => {
 
       await waitFor(() => {
         expect(screen.getByText('OUTPUT_TYPE::')).toBeInTheDocument();
-        expect(screen.getByText(`[${PromptOutputType.SPEC}]`)).toBeInTheDocument();
+        expect(screen.getByText(`[${PromptOutputType.DOCUMENT}]`)).toBeInTheDocument();
       });
     });
 

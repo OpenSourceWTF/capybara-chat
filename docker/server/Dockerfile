@@ -5,8 +5,8 @@ WORKDIR /app
 # Install build dependencies for native modules (better-sqlite3)
 RUN apt-get update && apt-get install -y python3 make g++ git curl && rm -rf /var/lib/apt/lists/*
 
-# Enable corepack for pnpm
-RUN corepack enable
+# Install pnpm globally (more reliable than corepack shim with volume mounts)
+RUN npm install -g pnpm@9
 
 # Copy workspace configuration
 COPY package.json pnpm-workspace.yaml tsconfig.base.json .npmrc ./

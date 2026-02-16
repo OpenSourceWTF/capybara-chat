@@ -309,14 +309,14 @@ describe('Entity Creation Flow Integration', () => {
 
       const textarea = screen.getByTestId('message-input');
       // Parser expects colon-separated IDs: /edit type:id
-      await user.type(textarea, '/edit spec:my-spec-id');
+      await user.type(textarea, '/edit prompt:my-prompt-id');
       await user.keyboard('{Enter}');
 
       expect(onSlashCommand).toHaveBeenCalled();
       const command = onSlashCommand.mock.calls[0][0] as ParsedCommand;
-      expect(command.entityType).toBe('spec');
+      expect(command.entityType).toBe('prompt');
       expect(command.action).toBe('edit');
-      expect(command.entityId).toBe('my-spec-id');
+      expect(command.entityId).toBe('my-prompt-id');
     });
   });
 });

@@ -63,7 +63,7 @@ export function SessionsManager({
     });
 
     // Define order for statuses
-    const statusOrder = ['RUNNING', 'PENDING', 'PAUSED', 'WAITING_HUMAN', 'WAITING_FOR_PR', 'COMPLETE', 'FAILED'];
+    const statusOrder = ['RUNNING', 'PENDING', 'PAUSED', 'WAITING_HUMAN', 'COMPLETE', 'FAILED', 'CANCELLED'];
 
     return statusOrder
       .filter(status => statusCounts.has(status))
@@ -80,7 +80,6 @@ export function SessionsManager({
     const matchesQuery = !query ||
       session.id?.toLowerCase().includes(lowerQuery) ||
       session.name?.toLowerCase().includes(lowerQuery) ||
-      session.specId?.toLowerCase().includes(lowerQuery) ||
       session.agentName?.toLowerCase().includes(lowerQuery);
 
     const matchesFilters = activeFilters.size === 0 ||
@@ -101,7 +100,7 @@ export function SessionsManager({
       newButtonLabel="spawn"
       loadingMessage="Loading sessions..."
       emptyMessage="No sessions found."
-      emptyActionLabel="sessions are created from specs"
+      emptyActionLabel="start a new chat session"
       renderItem={(session) => (
         <TerminalRow
           key={session.id}
@@ -124,9 +123,6 @@ export function SessionsManager({
           date={formatDateTime(session.startedAt)}
           meta={
             <span className="flex items-center gap-3 text-muted-foreground/70">
-              {session.specId && (
-                <span>spec:{truncateId(session.specId)}</span>
-              )}
               {session.agentName && (
                 <span className="text-primary/60">{session.agentName}</span>
               )}

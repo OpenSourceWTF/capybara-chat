@@ -18,15 +18,13 @@ interface UseLibraryDataReturn<T> {
  * Map API paths to entity event types for real-time updates
  */
 function getEntityEventsForPath(apiPath: string): string[] {
-  // Extract entity type from path (e.g., /api/specs -> spec)
+  // Extract entity type from path (e.g., /api/documents -> documents)
   const match = apiPath.match(/\/api\/(\w+)/);
   if (!match) return [];
 
   const entityType = match[1];
 
   switch (entityType) {
-    case 'specs':
-      return [SOCKET_EVENTS.SPEC_CREATED, SOCKET_EVENTS.SPEC_UPDATED, SOCKET_EVENTS.SPEC_DELETED];
     case 'documents':
       return [SOCKET_EVENTS.DOCUMENT_CREATED, SOCKET_EVENTS.DOCUMENT_UPDATED, SOCKET_EVENTS.DOCUMENT_DELETED];
     case 'prompts':

@@ -55,7 +55,7 @@ export function createHumanInputResponseHandler(deps: SocketHandlerDeps) {
  */
 export function createSessionHiddenHandler(deps: SocketHandlerDeps) {
   const { services, stateManagers } = deps;
-  const { taskMessageQueue, concurrency, sessionContextStore } = stateManagers;
+  const { concurrency, sessionContextStore } = stateManagers;
 
   return (data: { sessionId: string }) => {
     const { sessionId } = data;
@@ -65,8 +65,6 @@ export function createSessionHiddenHandler(deps: SocketHandlerDeps) {
     sessionContextStore.delete(sessionId);
     concurrency.clearSession(sessionId);
     services.humanLoop.cancelRequest(sessionId);
-
-    taskMessageQueue.clear(sessionId);
   };
 }
 
@@ -76,12 +74,10 @@ export function createSessionHiddenHandler(deps: SocketHandlerDeps) {
  */
 export function createSessionMessageHandler(messageHandler: MessageHandler | null) {
   return async (data: SessionMessageData) => {
-    // DUPLICATION DEBUG: Log every SESSION_MESSAGE arrival with full context
     log.info('SESSION_MESSAGE received', {
       sessionId: data.sessionId,
       messageId: data.messageId,
       content: data.content?.slice(0, 50),
-
       timestamp: Date.now(),
     });
 
@@ -119,9 +115,6 @@ export function createModelSwitchHandler(deps: SocketHandlerDeps) {
       await assistantPool.closeSession(sessionId);
       log.info('Closed CLI process for model switch', { sessionId });
     }
-
-    // NOTE: We intentionally do NOT invalidate the session or reset context injection
-    // The session will be resumed with --resume flag, preserving conversation history
 
     log.info('Model switch prepared, will resume with new model on next message', {
       sessionId,

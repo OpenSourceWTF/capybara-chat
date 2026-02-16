@@ -8,22 +8,21 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { Bot, Loader2, FolderGit2, X } from 'lucide-react';
+import { Bot, Loader2 } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogBody } from '../ui/Dialog';
 import { api } from '../../lib/api';
 import { createLogger } from '../../lib/logger';
 import { useServer } from '../../context/ServerContext';
-import { useFetchList } from '../../hooks/useFetchList';
-import { API_PATHS, EntityStatus, AgentDefinitionRole, CloneStatus } from '@capybara-chat/types';
-import type { AgentDefinition, Workspace } from '@capybara-chat/types';
+import { API_PATHS, EntityStatus, AgentDefinitionRole } from '@capybara-chat/types';
+import type { AgentDefinition } from '@capybara-chat/types';
 
 const log = createLogger('NewChatModal');
 
 interface NewChatModalProps {
   open: boolean;
   onClose: () => void;
-  onSelect: (agentDefinitionId?: string, workspaceId?: string) => void;
+  onSelect: (agentDefinitionId?: string) => void;
 }
 
 export function NewChatModal({ open, onClose, onSelect }: NewChatModalProps) {
@@ -31,22 +30,12 @@ export function NewChatModal({ open, onClose, onSelect }: NewChatModalProps) {
   const [agents, setAgents] = useState<AgentDefinition[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [selectedWorkspaceId, setSelectedWorkspaceId] = useState<string | null>(null);
-
-  // Fetch workspaces (only READY ones are selectable)
-  const { items: allWorkspaces, loading: workspacesLoading } = useFetchList<Workspace>({
-    url: `${serverUrl}${API_PATHS.WORKSPACES}`,
-    dataKey: 'workspaces',
-    enabled: open,
-  });
-  const workspaces = allWorkspaces.filter(w => w.cloneStatus === CloneStatus.READY);
 
   // Fetch agents when modal opens
   useEffect(() => {
     if (!open) return;
 
     setSelectedId(null);
-    setSelectedWorkspaceId(null);
 
     const fetchAgents = async () => {
       setLoading(true);
@@ -78,9 +67,9 @@ export function NewChatModal({ open, onClose, onSelect }: NewChatModalProps) {
   }, [open, serverUrl]);
 
   const handleCreate = useCallback(() => {
-    onSelect(selectedId || undefined, selectedWorkspaceId || undefined);
+    onSelect(selectedId || undefined);
     onClose();
-  }, [selectedId, selectedWorkspaceId, onSelect, onClose]);
+  }, [selectedId, onSelect, onClose]);
 
   return (
     <Dialog open={open} onClose={onClose}>
@@ -116,7 +105,7 @@ export function NewChatModal({ open, onClose, onSelect }: NewChatModalProps) {
                     key={agent.id}
                     onClick={() => setSelectedId(agent.id)}
                     onDoubleClick={() => {
-                      onSelect(agent.id, selectedWorkspaceId || undefined);
+                      onSelect(agent.id);
                       onClose();
                     }}
                     className={`w-full flex items-start gap-3 px-6 py-3 text-left transition-colors border-l-2
@@ -146,46 +135,6 @@ export function NewChatModal({ open, onClose, onSelect }: NewChatModalProps) {
                   </button>
                 );
               })}
-            </div>
-          )}
-
-          {/* Workspace selector (optional) */}
-          {!workspacesLoading && workspaces.length > 0 && (
-            <div className="border-t border-border mt-2 pt-3">
-              <div className="px-6 pb-2">
-                <span className="text-2xs font-mono font-bold text-muted-foreground uppercase tracking-widest">
-                  WORKSPACE <span className="text-muted-foreground/50 normal-case">(optional)</span>
-                </span>
-              </div>
-              <div className="flex flex-col">
-                {workspaces.map((ws) => {
-                  const isSelected = ws.id === selectedWorkspaceId;
-                  return (
-                    <button
-                      key={ws.id}
-                      onClick={() => setSelectedWorkspaceId(isSelected ? null : ws.id)}
-                      className={`w-full flex items-start gap-3 px-6 py-2.5 text-left transition-colors border-l-2
-                        ${isSelected
-                          ? 'border-primary bg-primary/5 text-foreground'
-                          : 'border-transparent hover:bg-muted/50 text-foreground/80 hover:text-foreground'
-                        }`}
-                    >
-                      <FolderGit2 className={`w-4 h-4 mt-0.5 shrink-0 ${isSelected ? 'text-primary' : 'text-muted-foreground'}`} />
-                      <div className="min-w-0 flex-1">
-                        <div className="text-xs font-mono font-bold truncate uppercase tracking-wider">
-                          {ws.name}
-                        </div>
-                        <div className="text-2xs text-muted-foreground mt-0.5 font-mono truncate">
-                          {ws.repoOwner}/{ws.repoName}
-                        </div>
-                      </div>
-                      {isSelected && (
-                        <X className="w-3 h-3 mt-1 shrink-0 text-muted-foreground hover:text-foreground" />
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
             </div>
           )}
 

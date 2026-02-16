@@ -27,15 +27,20 @@ import { createExpressApp, getCorsConfig } from './app/express-app.js';
 import { initializeDatabase } from './app/database-init.js';
 import { eventBus } from './events/event-bus.js';
 import { createSessionRoutes } from './routes/session-routes.js';
-import { createAuthRoutes, createGitHubAuthRoutes } from './routes/auth-routes.js';
+import { createAuthRoutes } from './routes/auth-routes.js';
 import { createHealthRoutes } from './routes/health-routes.js';
+import { createDocumentRoutes } from './routes/document-routes.js';
+import { createPromptSegmentRoutes } from './routes/prompt-routes.js';
+import { createAgentDefinitionRoutes } from './routes/agent-definition-routes.js';
 
 // 2. Middleware & Utils
 import {
   createLogger,
   requestLogger,
   errorMiddleware,
+  dualAuth,
   socketDualAuth,
+  setAuthUserRepo,
   rateLimit,
 } from './middleware/index.js';
 import {
@@ -64,6 +69,9 @@ async function startServer() {
 
     // Initialize ServiceRegistry (loads persisted state)
     ServiceRegistry.initializeAll();
+
+    // Inject user repo into auth middleware for X-User-Id lookups
+    setAuthUserRepo(repos.userRepo);
 
     // --------------------------------------------------------
     // 2. Setup Express App
@@ -227,11 +235,17 @@ async function startServer() {
         socketEmitter.toSessionOwner(data.sessionId, SOCKET_EVENTS.SESSION_MESSAGE, { sessionId: data.sessionId });
       });
 
-      // Relay Events (Generic)
+      // Relay Events (Generic) - bridge → session owner
       const RELAY_EVENTS = [
         SOCKET_EVENTS.SESSION_THINKING,
         SOCKET_EVENTS.SESSION_PROGRESS,
         SOCKET_EVENTS.SESSION_ERROR,
+        SOCKET_EVENTS.SESSION_RESPONSE,
+        SOCKET_EVENTS.SESSION_ACTIVITY,
+        SOCKET_EVENTS.SESSION_HALTED,
+        SOCKET_EVENTS.SESSION_CONTEXT_USAGE,
+        SOCKET_EVENTS.SESSION_COMPACTED,
+        SOCKET_EVENTS.SESSION_COST,
       ];
 
       RELAY_EVENTS.forEach(event => {
@@ -241,6 +255,22 @@ async function startServer() {
           }
         });
       });
+
+      // Persist-and-relay: SESSION_RESPONSE with message persistence
+      socket.on(SOCKET_EVENTS.SESSION_RESPONSE, socketHandler(socket, { eventName: SOCKET_EVENTS.SESSION_RESPONSE }, async (data: any) => {
+        if (data.message && !data.message.streaming && repos.messageRepo) {
+          try {
+            repos.messageRepo.create({
+              sessionId: data.sessionId,
+              role: 'assistant',
+              content: data.message.content,
+              status: MessageStatus.COMPLETED,
+            });
+          } catch (err) {
+            log.warn('Failed to persist response', { sessionId: data.sessionId, error: String(err) });
+          }
+        }
+      }));
 
       // Disconnect
       socket.on('disconnect', () => {
@@ -261,23 +291,34 @@ async function startServer() {
     app.use('/health', createHealthRoutes());
 
     // Auth
-    app.use('/api/auth/github', createGitHubAuthRoutes({
-      db,
-      userRepo: repos.userRepo,
-      authSessionRepo: repos.authSessionRepo
-    }));
     app.use('/api/auth', createAuthRoutes({
-      db,
       userRepo: repos.userRepo,
       authSessionRepo: repos.authSessionRepo
     }));
 
     // Sessions
-    app.use('/api/sessions', createSessionRoutes(
+    app.use('/api/sessions', dualAuth, createSessionRoutes(
       repos.sessionRepo,
       repos.messageRepo,
       repos.eventRepo,
       db
+    ));
+
+    // Documents
+    app.use('/api/documents', dualAuth, createDocumentRoutes(
+      repos.documentRepo,
+      repos.userRepo
+    ));
+
+    // Prompts (segments only)
+    app.use('/api/prompts', dualAuth, createPromptSegmentRoutes(
+      repos.promptSegmentRepo
+    ));
+
+    // Agent Definitions
+    app.use('/api/agent-definitions', dualAuth, createAgentDefinitionRoutes(
+      repos.agentDefinitionRepo,
+      repos.userRepo
     ));
 
     // Global Error Handler
@@ -286,14 +327,20 @@ async function startServer() {
     // --------------------------------------------------------
     // 6. Connect Event Bus to Socket.IO
     // --------------------------------------------------------
-    // Listen for all session events and broadcast to relevant rooms
+    // Listen for session events and broadcast to relevant rooms
     eventBus.onCategory('session', (event) => {
-      // Forward to session room
       const sessionId = event.metadata?.sessionId;
       if (sessionId) {
         socketEmitter.emitToSession(sessionId, event.type, event.payload);
       }
     });
+
+    // Broadcast document/prompt/agent events to all authenticated users
+    for (const category of ['document', 'memory', 'prompt', 'agentDefinition'] as const) {
+      eventBus.onCategory(category, (event) => {
+        socketEmitter.toAuthenticated(event.type, event.payload);
+      });
+    }
 
     // --------------------------------------------------------
     // 7. Start Listening

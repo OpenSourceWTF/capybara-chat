@@ -5,7 +5,7 @@
  * status bar inspired by vim/neovim status lines. Information is segmented
  * into logical groups with clear visual hierarchy.
  *
- * Layout: [MODE] session_id | claude_id | editing | task | cost   [brain] [settings]
+ * Layout: [MODE] session_id | claude_id | editing | cost   [brain] [settings]
  *
  * Displays persistent session information:
  * - Mode indicator (primary color block like vim mode)
@@ -52,9 +52,6 @@ export interface ChatStatusHeaderProps {
   onViewSession?: () => void;
   /** Total activity count (memories + created entities) for badge display */
   activityCount?: number;
-  /** Task info when this is a task session */
-  taskInfo?: { id: string; state: string } | null;
-  /** 195-ui-usability-pass: model/onModelSwitch moved to ChatSettingsDialog */
   className?: string;
 }
 
@@ -70,8 +67,7 @@ function formatCost(cost: number): string {
 /**
  * Get mode label based on session context
  */
-function getModeLabel(editingContext?: EditingContextInfo | null, taskInfo?: { state: string } | null): string {
-  if (taskInfo) return 'TASK';
+function getModeLabel(editingContext?: EditingContextInfo | null): string {
   if (editingContext) return 'EDIT';
   return 'CHAT';
 }
@@ -90,10 +86,9 @@ export function ChatStatusHeader({
   onDismissContextReset,
   onViewSession,
   activityCount = 0,
-  taskInfo,
   className,
 }: ChatStatusHeaderProps) {
-  const modeLabel = getModeLabel(editingContext, taskInfo);
+  const modeLabel = getModeLabel(editingContext);
 
   return (
     <footer className={cn('flex-shrink-0 flex flex-col', className)}>
@@ -124,7 +119,7 @@ export function ChatStatusHeader({
         {/* Mode indicator - colored block */}
         <div className={cn(
           'chat-status-line-primary',
-          taskInfo ? 'bg-purple-600 text-white' : editingContext ? 'bg-progress text-white' : ''
+          editingContext ? 'bg-progress text-white' : ''
         )}>
           {modeLabel}
         </div>
@@ -167,13 +162,6 @@ export function ChatStatusHeader({
           >
             <span className="w-1.5 h-1.5 bg-progress animate-pulse flex-shrink-0" />
             {editingContext.entityType}
-          </span>
-        )}
-
-        {/* Task state */}
-        {taskInfo && (
-          <span className="chat-status-line-segment text-purple-600 font-bold">
-            {taskInfo.state.replace(/_/g, ' ')}
           </span>
         )}
 

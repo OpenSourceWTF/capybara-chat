@@ -4,7 +4,7 @@ services:
       context: ../
       dockerfile: docker/server/Dockerfile
     ports:
-      - "2279:2279"
+      - "3279:2279"
     volumes:
       - ./data:/data
     environment:
@@ -19,7 +19,7 @@ services:
       context: ../
       dockerfile: docker/bridge/Dockerfile
     ports:
-      - "2280:2280"
+      - "3280:2280"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
 
@@ -41,9 +41,9 @@ services:
       context: ../
       dockerfile: docker/ui/Dockerfile
     ports:
-      - "3000:3000"
+      - "3281:3000"
     environment:
-      - VITE_SERVER_URL=http://localhost:2279 # Browser access via localhost
+      - VITE_SERVER_URL=http://localhost:3279 # Browser access via localhost (offset from capybara)
     depends_on:
       - server
     restart: always

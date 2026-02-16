@@ -3,25 +3,22 @@
  *
  * Displays:
  * - Memories: Agent observations, decisions, context
- * - Created: Entities created during this session (specs, docs, prompts, etc.)
- * - Graph: Visual timeline of session activity (future)
+ * - Created: Entities created during this session (docs, prompts, etc.)
+ * - Graph: Visual timeline of session activity
  *
  * Following "Cozy Terminal" design: monospace, warm colors, zero radius
  */
 
 import { useState, useMemo } from 'react';
-import { Brain, Layers, GitBranch, FileText, BookOpen, Workflow, Bot, Search, X, User, MessageSquare, Wrench, AlertCircle, CheckCircle, Loader2, Zap, Activity } from 'lucide-react';
+import { Brain, Layers, GitBranch, FileText, Bot, Search, X, User, MessageSquare, Wrench, AlertCircle, CheckCircle, Loader2, Zap } from 'lucide-react';
 import { MemoryTimeline } from './MemoryTimeline';
-import { SessionPipelineLogs } from './SessionPipelineLogs';
-import { SessionPipelineStatus } from './SessionPipelineStatus';
-import { useSessionPipelineEvents } from '../../hooks/useSessionPipelineEvents';
 import { formatTime, formatDate } from '../../lib/utils';
 import { Input } from '../ui';
 import type { Document } from '@capybara-chat/types';
 import type { SessionCreatedEntity, SessionEntityCounts } from '../../hooks/useSessionCreatedEntities';
 import type { TimelineItem, UIChatMessage, ToolUseItem, SessionEvent, EmbeddedToolUse } from '../../hooks/useSessionMessages';
 
-type TabId = 'memories' | 'created' | 'graph' | 'pipeline';
+type TabId = 'memories' | 'created' | 'graph';
 
 interface Tab {
   id: TabId;
@@ -31,7 +28,7 @@ interface Tab {
 }
 
 export interface SessionActivityPanelProps {
-  /** Session ID for pipeline events */
+  /** Session ID for activity events */
   sessionId: string;
 
   /** Session memories */
@@ -79,15 +76,11 @@ export function SessionActivityPanel({
 }: SessionActivityPanelProps) {
   const [activeTab, setActiveTab] = useState<TabId>('graph');
 
-  // Listen to pipeline events for real-time updates (Phase 4)
-  const { logs, stages, pipelineStatus } = useSessionPipelineEvents(sessionId);
-
   const tabs: Tab[] = useMemo(() => [
     { id: 'graph', label: 'GRAPH', icon: GitBranch },
     { id: 'memories', label: 'MEMORIES', icon: Brain, badge: memoryCount },
     { id: 'created', label: 'CREATED', icon: Layers, badge: entities.length },
-    { id: 'pipeline', label: 'PIPELINE', icon: Activity, badge: logs.length > 0 ? logs.length : undefined },
-  ], [memoryCount, entities.length, logs.length]);
+  ], [memoryCount, entities.length]);
 
   return (
     <div className="flex flex-col h-full">
@@ -153,23 +146,6 @@ export function SessionActivityPanel({
             loading={timelineLoading}
           />
         )}
-
-        {activeTab === 'pipeline' && (
-          <div className="h-full grid grid-cols-2 divide-x divide-border">
-            {/* Pipeline Status - Left side */}
-            <div className="h-full overflow-hidden">
-              <SessionPipelineStatus
-                stages={stages}
-                pipelineStatus={pipelineStatus}
-              />
-            </div>
-
-            {/* Pipeline Logs - Right side */}
-            <div className="h-full overflow-hidden">
-              <SessionPipelineLogs logs={logs} />
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );
@@ -180,10 +156,8 @@ export function SessionActivityPanel({
  */
 function getEntityIcon(type: SessionCreatedEntity['entityType']): React.ElementType {
   switch (type) {
-    case 'spec': return FileText;
-    case 'document': return BookOpen;
+    case 'document': return FileText;
     case 'prompt': return FileText;
-    case 'pipeline': return Workflow;
     case 'agent_definition': return Bot;
     default: return FileText;
   }
@@ -194,10 +168,8 @@ function getEntityIcon(type: SessionCreatedEntity['entityType']): React.ElementT
  */
 function getEntityColor(type: SessionCreatedEntity['entityType']): string {
   switch (type) {
-    case 'spec': return 'text-amber-600 dark:text-amber-400';
     case 'document': return 'text-sky-600 dark:text-sky-400';
     case 'prompt': return 'text-emerald-600 dark:text-emerald-400';
-    case 'pipeline': return 'text-purple-600 dark:text-purple-400';
     case 'agent_definition': return 'text-rose-600 dark:text-rose-400';
     default: return 'text-muted-foreground';
   }
@@ -208,10 +180,8 @@ function getEntityColor(type: SessionCreatedEntity['entityType']): string {
  */
 function getEntityLabel(type: SessionCreatedEntity['entityType']): string {
   switch (type) {
-    case 'spec': return 'SPEC';
     case 'document': return 'DOC';
     case 'prompt': return 'PROMPT';
-    case 'pipeline': return 'PIPELINE';
     case 'agent_definition': return 'AGENT';
     default: return 'ITEM';
   }
@@ -294,7 +264,7 @@ function CreatedEntitiesView({
 
         {/* Type filter buttons */}
         <div className="flex items-center gap-0.5 text-2xs font-mono">
-          {(['all', 'spec', 'document', 'prompt', 'pipeline', 'agent_definition'] as const).map((type) => {
+          {(['all', 'document', 'prompt', 'agent_definition'] as const).map((type) => {
             const count = type === 'all' ? entities.length : entities.filter(e => e.entityType === type).length;
             if (type !== 'all' && count === 0) return null;
 
@@ -365,10 +335,8 @@ function CreatedEntitiesView({
       {/* Summary footer */}
       {counts && entities.length > 0 && (
         <div className="flex items-center gap-3 px-3 py-2 border-t border-border bg-muted/30 text-2xs font-mono text-muted-foreground">
-          {counts.specs > 0 && <span><span className="text-amber-600">{counts.specs}</span> specs</span>}
           {counts.documents > 0 && <span><span className="text-sky-600">{counts.documents}</span> docs</span>}
           {counts.prompts > 0 && <span><span className="text-emerald-600">{counts.prompts}</span> prompts</span>}
-          {counts.pipelines > 0 && <span><span className="text-purple-600">{counts.pipelines}</span> pipelines</span>}
           {counts.agentDefinitions > 0 && <span><span className="text-rose-600">{counts.agentDefinitions}</span> agents</span>}
         </div>
       )}
@@ -453,7 +421,7 @@ function EmptyCreatedState({ message }: { message: string }) {
       </div>
       <p className="font-mono text-sm text-muted-foreground">{message}</p>
       <p className="font-mono text-xs text-muted-foreground/50 mt-2">
-        Specs, docs, prompts, and more will appear here
+        Docs, prompts, and more will appear here
       </p>
     </div>
   );

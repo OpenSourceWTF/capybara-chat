@@ -71,8 +71,6 @@ export interface MessageHandlerDeps {
 
   /** Concurrency manager for session locks */
   concurrency: SessionConcurrencyManager;
-  /** Whether using Docker mode */
-  useDocker: boolean;
 }
 
 /**

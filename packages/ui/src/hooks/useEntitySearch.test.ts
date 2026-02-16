@@ -29,18 +29,18 @@ describe('useEntitySearch', () => {
   });
 
   it('fetches entities and filters by search query', async () => {
-    const mockSpecs = [
-      { id: 'spec-1', title: 'First Spec' },
-      { id: 'spec-2', title: 'Second Spec' },
-      { id: 'spec-3', title: 'Another One' },
+    const mockPrompts = [
+      { id: 'prompt-1', name: 'First Prompt' },
+      { id: 'prompt-2', name: 'Second Prompt' },
+      { id: 'prompt-3', name: 'Another One' },
     ];
 
     vi.mocked(api.get).mockResolvedValue({
       ok: true,
-      json: () => Promise.resolve({ specs: mockSpecs }),
+      json: () => Promise.resolve({ segments: mockPrompts }),
     } as Response);
 
-    const { result } = renderHook(() => useEntitySearch('spec', 'first'));
+    const { result } = renderHook(() => useEntitySearch('prompt', 'first'));
 
     // Wait for debounce + fetch
     await waitFor(() => {
@@ -48,9 +48,9 @@ describe('useEntitySearch', () => {
     }, { timeout: 1000 });
 
     expect(result.current.results[0]).toEqual({
-      id: 'spec-1',
-      displayName: 'First Spec',
-      entityType: 'spec',
+      id: 'prompt-1',
+      displayName: 'First Prompt',
+      entityType: 'prompt',
     });
   });
 
@@ -97,18 +97,18 @@ describe('useEntitySearch', () => {
   });
 
   it('limits results to maxResults', async () => {
-    const mockSpecs = Array.from({ length: 20 }, (_, i) => ({
-      id: `spec-${i}`,
-      title: `Spec ${i}`,
+    const mockDocs = Array.from({ length: 20 }, (_, i) => ({
+      id: `doc-${i}`,
+      name: `Document ${i}`,
     }));
 
     vi.mocked(api.get).mockResolvedValue({
       ok: true,
-      json: () => Promise.resolve({ specs: mockSpecs }),
+      json: () => Promise.resolve({ documents: mockDocs }),
     } as Response);
 
     const { result } = renderHook(() =>
-      useEntitySearch('spec', '', { maxResults: 5 })
+      useEntitySearch('document', '', { maxResults: 5 })
     );
 
     await waitFor(() => {
@@ -119,51 +119,51 @@ describe('useEntitySearch', () => {
   });
 
   it('uses title field when name is not available', async () => {
-    const mockSpecs = [{ id: 'spec-1', title: 'Spec Title' }];
+    const mockDocs = [{ id: 'doc-1', title: 'Doc Title' }];
 
     vi.mocked(api.get).mockResolvedValue({
       ok: true,
-      json: () => Promise.resolve({ specs: mockSpecs }),
+      json: () => Promise.resolve({ documents: mockDocs }),
     } as Response);
 
-    const { result } = renderHook(() => useEntitySearch('spec', ''));
+    const { result } = renderHook(() => useEntitySearch('document', ''));
 
     await waitFor(() => {
       expect(result.current.loading).toBe(false);
     }, { timeout: 1000 });
 
-    expect(result.current.results[0].displayName).toBe('Spec Title');
+    expect(result.current.results[0].displayName).toBe('Doc Title');
   });
 
   it('falls back to ID when no name or title', async () => {
-    const mockPipelines = [{ id: 'pipe-orphan' }];
+    const mockAgents = [{ id: 'agent-orphan' }];
 
     vi.mocked(api.get).mockResolvedValue({
       ok: true,
-      json: () => Promise.resolve({ pipelines: mockPipelines }),
+      json: () => Promise.resolve({ agentDefinitions: mockAgents }),
     } as Response);
 
-    const { result } = renderHook(() => useEntitySearch('pipeline', ''));
+    const { result } = renderHook(() => useEntitySearch('agentDefinition', ''));
 
     await waitFor(() => {
       expect(result.current.loading).toBe(false);
     }, { timeout: 1000 });
 
-    expect(result.current.results[0].displayName).toBe('pipe-orphan');
+    expect(result.current.results[0].displayName).toBe('agent-orphan');
   });
 
   it('handles different entity types correctly', async () => {
     vi.mocked(api.get).mockResolvedValue({
       ok: true,
-      json: () => Promise.resolve({ pipelines: [{ id: 'pipe-1', name: 'Test' }] }),
+      json: () => Promise.resolve({ agentDefinitions: [{ id: 'agent-1', name: 'Test' }] }),
     } as Response);
 
-    const { result } = renderHook(() => useEntitySearch('pipeline', ''));
+    const { result } = renderHook(() => useEntitySearch('agentDefinition', ''));
 
     await waitFor(() => {
       expect(result.current.loading).toBe(false);
     }, { timeout: 1000 });
 
-    expect(api.get).toHaveBeenCalledWith('/api/pipelines');
+    expect(api.get).toHaveBeenCalledWith('/api/agent-definitions');
   });
 });

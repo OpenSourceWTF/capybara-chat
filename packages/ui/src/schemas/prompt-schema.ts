@@ -28,9 +28,7 @@ export interface PromptFormData {
  */
 export const OUTPUT_TYPE_OPTIONS = [
   { value: '', label: 'None' },
-  { value: 'spec', label: 'Spec' },
   { value: 'prompt', label: 'Prompt' },
-  { value: 'pipeline', label: 'Pipeline' },
   { value: 'document', label: 'Document' },
   { value: 'code', label: 'Code' },
   { value: 'analysis', label: 'Analysis' },

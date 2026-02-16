@@ -15,7 +15,7 @@
  * ```tsx
  * // Emit an event
  * import { entityEvents } from '../lib/entity-events';
- * entityEvents.emit('entity:new', { entityType: 'spec' });
+ * entityEvents.emit('entity:new', { entityType: 'prompt' });
  * entityEvents.emit('entity:view', { entityType: 'document', entityId: 'doc_123' });
  * entityEvents.emit('session:new', {});
  *

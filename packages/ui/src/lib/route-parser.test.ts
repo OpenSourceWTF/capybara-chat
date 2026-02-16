@@ -7,45 +7,42 @@ import { parseRoute, buildPath } from './route-parser';
 
 describe('Route Parser', () => {
   describe('parseRoute', () => {
-    it('parses root path as dashboard', () => {
-      expect(parseRoute('/', '')).toEqual({ tab: 'dashboard', sessionId: undefined });
+    it('parses root path as prompts', () => {
+      expect(parseRoute('/', '')).toEqual({ tab: 'prompts', sessionId: undefined });
     });
 
-    it('parses empty path as dashboard', () => {
-      expect(parseRoute('', '')).toEqual({ tab: 'dashboard', sessionId: undefined });
+    it('parses empty path as prompts', () => {
+      expect(parseRoute('', '')).toEqual({ tab: 'prompts', sessionId: undefined });
     });
 
     it('parses tab paths', () => {
-      expect(parseRoute('/specs', '')).toEqual({ tab: 'specs', sessionId: undefined });
       expect(parseRoute('/prompts', '')).toEqual({ tab: 'prompts', sessionId: undefined });
       expect(parseRoute('/documents', '')).toEqual({ tab: 'documents', sessionId: undefined });
       expect(parseRoute('/agents', '')).toEqual({ tab: 'agents', sessionId: undefined });
-      expect(parseRoute('/tasks', '')).toEqual({ tab: 'tasks', sessionId: undefined });
       expect(parseRoute('/sessions', '')).toEqual({ tab: 'sessions', sessionId: undefined });
-      expect(parseRoute('/workspaces', '')).toEqual({ tab: 'workspaces', sessionId: undefined });
     });
 
     it('parses entity view mode', () => {
-      expect(parseRoute('/specs/spec_abc123', '')).toEqual({
-        tab: 'specs',
-        entityId: 'spec_abc123',
+      expect(parseRoute('/prompts/prompt_abc123', '')).toEqual({
+        tab: 'prompts',
+        entityId: 'prompt_abc123',
         entityMode: 'view',
         sessionId: undefined,
       });
     });
 
     it('parses entity edit mode', () => {
-      expect(parseRoute('/specs/spec_abc123/edit', '')).toEqual({
-        tab: 'specs',
-        entityId: 'spec_abc123',
+      expect(parseRoute('/prompts/prompt_abc123/edit', '')).toEqual({
+        tab: 'prompts',
+        entityId: 'prompt_abc123',
         entityMode: 'edit',
         sessionId: undefined,
       });
     });
 
     it('parses new entity path', () => {
-      expect(parseRoute('/specs/new', '')).toEqual({
-        tab: 'specs',
+      expect(parseRoute('/prompts/new', '')).toEqual({
+        tab: 'prompts',
         entityId: 'new',
         entityMode: 'edit',
         sessionId: undefined,
@@ -53,8 +50,8 @@ describe('Route Parser', () => {
     });
 
     it('parses session query param', () => {
-      expect(parseRoute('/specs', '?session=sess_123')).toEqual({
-        tab: 'specs',
+      expect(parseRoute('/prompts', '?session=sess_123')).toEqual({
+        tab: 'prompts',
         sessionId: 'sess_123',
       });
     });
@@ -68,12 +65,12 @@ describe('Route Parser', () => {
       });
     });
 
-    it('handles unknown tab as dashboard', () => {
-      expect(parseRoute('/unknown', '')).toEqual({ tab: 'dashboard', sessionId: undefined });
+    it('handles unknown tab as prompts', () => {
+      expect(parseRoute('/unknown', '')).toEqual({ tab: 'prompts', sessionId: undefined });
     });
 
     it('handles trailing slashes', () => {
-      expect(parseRoute('/specs/', '')).toEqual({ tab: 'specs', sessionId: undefined });
+      expect(parseRoute('/prompts/', '')).toEqual({ tab: 'prompts', sessionId: undefined });
     });
 
     it('handles entity IDs with special characters', () => {
@@ -87,29 +84,25 @@ describe('Route Parser', () => {
   });
 
   describe('buildPath', () => {
-    it('builds dashboard path', () => {
-      expect(buildPath({ tab: 'dashboard' })).toBe('/');
-    });
-
     it('builds tab path', () => {
-      expect(buildPath({ tab: 'specs' })).toBe('/specs');
       expect(buildPath({ tab: 'prompts' })).toBe('/prompts');
+      expect(buildPath({ tab: 'documents' })).toBe('/documents');
     });
 
     it('builds entity view path', () => {
-      expect(buildPath({ tab: 'specs', entityId: 'spec_123' })).toBe('/specs/spec_123');
+      expect(buildPath({ tab: 'prompts', entityId: 'prompt_123' })).toBe('/prompts/prompt_123');
     });
 
     it('builds entity edit path', () => {
-      expect(buildPath({ tab: 'specs', entityId: 'spec_123', entityMode: 'edit' })).toBe('/specs/spec_123/edit');
+      expect(buildPath({ tab: 'prompts', entityId: 'prompt_123', entityMode: 'edit' })).toBe('/prompts/prompt_123/edit');
     });
 
     it('does not add /edit for view mode', () => {
-      expect(buildPath({ tab: 'specs', entityId: 'spec_123', entityMode: 'view' })).toBe('/specs/spec_123');
+      expect(buildPath({ tab: 'prompts', entityId: 'prompt_123', entityMode: 'view' })).toBe('/prompts/prompt_123');
     });
 
     it('builds path with session param', () => {
-      expect(buildPath({ tab: 'specs', sessionId: 'sess_456' })).toBe('/specs?session=sess_456');
+      expect(buildPath({ tab: 'prompts', sessionId: 'sess_456' })).toBe('/prompts?session=sess_456');
     });
 
     it('builds full path with entity and session', () => {
@@ -121,23 +114,22 @@ describe('Route Parser', () => {
       })).toBe('/documents/doc_789/edit?session=sess_abc');
     });
 
-    it('defaults to dashboard when tab is missing', () => {
-      expect(buildPath({})).toBe('/');
+    it('defaults to /prompts when tab is missing', () => {
+      expect(buildPath({})).toBe('/prompts');
     });
 
     it('encodes session ID in query param', () => {
-      expect(buildPath({ tab: 'specs', sessionId: 'sess with spaces' })).toBe('/specs?session=sess%20with%20spaces');
+      expect(buildPath({ tab: 'prompts', sessionId: 'sess with spaces' })).toBe('/prompts?session=sess%20with%20spaces');
     });
   });
 
   describe('round-trip', () => {
     it('parseRoute → buildPath → parseRoute is stable', () => {
       const cases = [
-        { path: '/', search: '' },
-        { path: '/specs', search: '' },
-        { path: '/specs/spec_123', search: '' },
-        { path: '/specs/spec_123/edit', search: '' },
-        { path: '/specs/new', search: '' },
+        { path: '/prompts', search: '' },
+        { path: '/prompts/prompt_123', search: '' },
+        { path: '/prompts/prompt_123/edit', search: '' },
+        { path: '/prompts/new', search: '' },
         { path: '/agents/agent_1', search: '?session=sess_x' },
       ];
 

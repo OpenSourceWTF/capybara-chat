@@ -4,7 +4,7 @@
  * Displays comprehensive session information in the left content pane:
  * - Session metadata (name, timestamps, cost)
  * - Memories created by the agent
- * - Entities created during the session (specs, docs, prompts, etc.)
+ * - Entities created during the session (docs, prompts, agents, etc.)
  * - Visual timeline graph of all session activity
  *
  * Follows "Cozy Terminal" design: monospace, warm colors, zero radius

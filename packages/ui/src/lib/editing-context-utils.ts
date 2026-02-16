@@ -15,7 +15,6 @@ export function formatEntityType(type: string): string {
  * Map entity types to their huddle-mcp tool names
  */
 export const ENTITY_TOOL_MAP: Record<string, { get: string; update: string; create: string }> = {
-  spec: { get: 'spec_get', update: 'spec_update', create: 'spec_create' },
   prompt: { get: 'prompt_get', update: 'prompt_update', create: 'prompt_create' },
   document: { get: 'document_get', update: 'document_update', create: 'document_create' },
   agentDefinition: { get: 'agent_get', update: 'agent_update', create: 'agent_create' },
@@ -26,7 +25,7 @@ export const ENTITY_TOOL_MAP: Record<string, { get: string; update: string; crea
  */
 export function compactValues(data: Record<string, unknown>): Record<string, unknown> {
   const compact: Record<string, unknown> = {};
-  const skipKeys = ['id', 'createdAt', 'updatedAt', 'sessionId', 'workspaceId'];
+  const skipKeys = ['id', 'createdAt', 'updatedAt', 'sessionId'];
 
   for (const [key, value] of Object.entries(data)) {
     if (value === null || value === undefined || value === '') continue;

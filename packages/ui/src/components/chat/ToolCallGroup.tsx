@@ -34,7 +34,7 @@ export interface ToolCallGroupProps {
  * Get a short display name for a tool (strips common prefixes for readability)
  */
 function getShortToolName(toolName: string): string {
-  // MCP tools have long names like "mcp__capybara-huddle__spec_get"
+  // MCP tools have long names like "mcp__capybara-huddle__prompt_get"
   // Show the last segment for brevity in the summary
   if (toolName.startsWith('mcp__')) {
     const parts = toolName.split('__');
